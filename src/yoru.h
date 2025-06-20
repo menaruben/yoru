@@ -1,0 +1,9 @@
+#ifndef __YORU_H__
+#define __YORU_H__
+
+#include "./inttypes/yoru_inttypes.h"
+#include "./collections/yoru_collections.h"
+#include "./allocators/yoru_allocators.h"
+#include "./math/yoru_math.h"
+
+#endif
