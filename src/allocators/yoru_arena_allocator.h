@@ -14,36 +14,6 @@ typedef struct
     size_t next_offset;
 } ArenaAllocator_t;
 
-/// AllocationResult_t
-/// A structure to hold the result of an allocation attempt with the fields:
-/// - `ptr`: Pointer to the allocated memory (or NULL if allocation failed).
-/// - `size`: The size of the allocated memory (0 if allocation failed).
-/// - `error`: A string describing the error (NULL if allocation succeeded).
-typedef struct
-{
-    void *ptr;
-    size_t size;
-    const char *error;
-} AllocationResult_t;
-
-static inline AllocationResult_t *AllocationResult_Success(void *ptr, size_t size)
-{
-    static AllocationResult_t result;
-    result.ptr = ptr;
-    result.size = size;
-    result.error = NULL;
-    return &result;
-}
-
-static inline AllocationResult_t *AllocationResult_Failure(const char *error)
-{
-    static AllocationResult_t result;
-    result.ptr = NULL;
-    result.size = 0;
-    result.error = error;
-    return &result;
-}
-
 /// @brief
 /// @param capacity
 /// @return `ArenaAllocator_t`
@@ -59,17 +29,17 @@ ArenaAllocator_t ArenaAllocator_Init(size_t capacity)
 /// @brief ArenaAllocator_Allocate allocates memory on the given arena allocator.
 /// @param allocator is the arena allocator to allocate memory from.
 /// @param size which is the size of the memory to allocate.
-/// @return `AllocationResult_t*` containing the result of the allocation.
-AllocationResult_t *ArenaAllocator_Allocate(ArenaAllocator_t *allocator, size_t size)
+/// @return
+void *ArenaAllocator_Allocate(ArenaAllocator_t *allocator, size_t size)
 {
     if (allocator->next_offset + size > allocator->capacity)
     {
-        return AllocationResult_Failure("ArenaAllocator: Out of memory");
+        return NULL;
     }
 
     void *ptr = (char *)allocator->memory + allocator->next_offset;
     allocator->next_offset += size;
-    return AllocationResult_Success(ptr, size);
+    return ptr;
 }
 
 /// @brief ArenaAllocator_Reset resets the arena allocator, allowing for reuse of the memory.

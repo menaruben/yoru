@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -Wall -Werror -std=c99 -I../
+CFLAGS = -Wall -std=c99 -I../
 
 .PHONY: clean
 

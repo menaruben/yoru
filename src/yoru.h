@@ -5,5 +5,6 @@
 #include "./collections/yoru_collections.h"
 #include "./allocators/yoru_allocators.h"
 #include "./math/yoru_math.h"
+#include "./asserts/yoru_asserts.h"
 
 #endif

@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "../allocators/yoru_allocators.h"
 #include "../math/yoru_math.h"
+#include "../asserts/yoru_asserts.h"
 
 #define Array_T(type)                                                                        \
     typedef struct                                                                           \
@@ -16,6 +17,8 @@
     static inline Array_##type Array_##type##_Init(ArenaAllocator_t *arena, size_t capacity) \
     {                                                                                        \
         Array_##type arr;                                                                    \
+        void *ptr = ArenaAllocator_Allocate(arena, sizeof(type) * capacity);                 \
+        ASSERT_NOT_EQUAL(ptr, NULL);                                                         \
         arr.items = (type *)ArenaAllocator_Allocate(arena, sizeof(type) * capacity);         \
         arr.size = 0;                                                                        \
         arr.capacity = capacity;                                                             \

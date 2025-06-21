@@ -2,5 +2,6 @@
 #define __YORU_COLLECTIONS_H__
 
 #include "yoru_array.h"
+#include "yoru_list.h"
 
 #endif
