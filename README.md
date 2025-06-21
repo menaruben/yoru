@@ -5,16 +5,16 @@ I decided to write this library because I really enjoy writing C, but I often fi
 Yoru is not here to save you from C, but to make it easier to use and to get work done. This means that I am adding some features like:
 - basic generic data structures without being able to go out of bounds
     - static array
-    - dynamic array
-    - hash map
-    - linked list
-    - queue
+    - linked list / queue
     - stack
-    - tree with preorder, inorder and postorder traversals+visitors
+    - dynamic array
+    - treemap
+    - hash map and hash set    
 - strings, string builders and other string utilities
 - some typedefs i enjoy using like `uint8_t` = `u8`
 - allocators
     - arena allocator
+    - might add more in the future...
 - some math utilities like an actual modulo function (because C's `%` operator is not a modulo operator but a remainder operator)
 - and probably a lot more when I think of other things I want to add
 
