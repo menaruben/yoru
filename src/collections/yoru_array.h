@@ -6,34 +6,32 @@
 #include "../math/yoru_math.h"
 #include "../asserts/yoru_asserts.h"
 
-#define Array_T(type)                                                                        \
-    typedef struct                                                                           \
-    {                                                                                        \
-        type *items;                                                                         \
-        size_t size;                                                                         \
-        size_t capacity;                                                                     \
-    } Array_##type;                                                                          \
-                                                                                             \
-    static inline Array_##type Array_##type##_Init(ArenaAllocator_t *arena, size_t capacity) \
-    {                                                                                        \
-        Array_##type arr;                                                                    \
-        void *ptr = ArenaAllocator_Allocate(arena, sizeof(type) * capacity);                 \
-        ASSERT_NOT_EQUAL(ptr, NULL);                                                         \
-        arr.items = (type *)ArenaAllocator_Allocate(arena, sizeof(type) * capacity);         \
-        arr.size = 0;                                                                        \
-        arr.capacity = capacity;                                                             \
-        return arr;                                                                          \
-    }                                                                                        \
-                                                                                             \
-    static inline type *Array_##type##_Get(Array_##type *arr, size_t index)                  \
-    {                                                                                        \
-        index = usize_modulo(index, arr->capacity);                                          \
-        return &arr->items[index];                                                           \
-    }                                                                                        \
-    static inline void Array_##type##_Put(Array_##type *arr, size_t index, type value)       \
-    {                                                                                        \
-        index = usize_modulo(index, arr->capacity);                                          \
-        arr->items[index] = value;                                                           \
+#define Array_T(T)                                                            \
+    typedef struct                                                            \
+    {                                                                         \
+        T *items;                                                             \
+        size_t size;                                                          \
+        size_t capacity;                                                      \
+    } Array_##T;                                                              \
+                                                                              \
+    static inline Array_##T Array_##T##_Init(T *ptr, size_t capacity)         \
+    {                                                                         \
+        Array_##T arr;                                                        \
+        ASSERT_NOT_EQUAL(ptr, NULL);                                          \
+        arr.items = ptr;                                                      \
+        arr.size = 0;                                                         \
+        arr.capacity = capacity;                                              \
+        return arr;                                                           \
+    }                                                                         \
+    static inline T *Array_##T##_Get(Array_##T *arr, size_t index)            \
+    {                                                                         \
+        index = usize_modulo(index, arr->capacity);                           \
+        return &arr->items[index];                                            \
+    }                                                                         \
+    static inline void Array_##T##_Put(Array_##T *arr, size_t index, T value) \
+    {                                                                         \
+        index = usize_modulo(index, arr->capacity);                           \
+        arr->items[index] = value;                                            \
     }
 
 #endif

@@ -29,7 +29,7 @@
                                                List_##type *list, type value)           \
     {                                                                                   \
         ListNode_##type *node =                                                         \
-            (ListNode_##type *)ArenaAllocator_Allocate(arena, sizeof(ListNode_##type)); \
+            (ListNode_##type *)ArenaAllocator_Alloc(arena, sizeof(ListNode_##type)); \
         ASSERT_NOT_EQUAL(node, NULL);                                                   \
         node->value = value;                                                            \
         node->next = list->head;                                                        \
@@ -42,7 +42,7 @@
                                               type value)                               \
     {                                                                                   \
         ListNode_##type *node =                                                         \
-            (ListNode_##type *)ArenaAllocator_Allocate(arena, sizeof(ListNode_##type)); \
+            (ListNode_##type *)ArenaAllocator_Alloc(arena, sizeof(ListNode_##type)); \
         ASSERT_NOT_EQUAL(node, NULL);                                                   \
         node->value = value;                                                            \
         node->next = NULL;                                                              \
@@ -78,7 +78,7 @@
             prev = prev->next;                                                          \
         }                                                                               \
         ListNode_##type *node =                                                         \
-            (ListNode_##type *)ArenaAllocator_Allocate(arena, sizeof(ListNode_##type)); \
+            (ListNode_##type *)ArenaAllocator_Alloc(arena, sizeof(ListNode_##type)); \
         ASSERT_NOT_EQUAL(node, NULL);                                                   \
         node->value = value;                                                            \
         node->next = prev->next;                                                        \

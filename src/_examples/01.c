@@ -6,13 +6,22 @@ Array_T(i32);
 
 int main()
 {
-    // create an arena allocator
-    ArenaAllocator_t arena = ArenaAllocator_Init(1000 * sizeof(i32));
+    ArenaAllocator_t *arena = ArenaAllocator_Init(1024 * sizeof(i32));
+    if (arena == NULL)
+    {
+        fprintf(stderr, "Failed to initialize arena allocator.\n");
+        return 1;
+    }
 
-    // allocate the i32 array of size 10 in the arena
-    Array_i32 arr = Array_i32_Init(&arena, 10);
+    i32 *ptr = ArenaAllocator_Alloc(arena, 10 * sizeof(i32));
+    if (ptr == NULL)
+    {
+        fprintf(stderr, "Failed to allocate array.\n");
+        ArenaAllocator_Free(arena);
+        return 1;
+    }
 
-    // fill the array with values
+    Array_i32 arr = Array_i32_Init(ptr, 10);
     for (i32 i = 0; i < 20; i++)
     {
         // note: index will get normalized between 0 and length of
@@ -28,7 +37,7 @@ int main()
     {
         // note: index will get normalized between 0 and length of
         // the array using modulo operation
-        i32 *value = Array_i32_Get(&arr, i);
+        const i32 *value = Array_i32_Get(&arr, i);
         if (value)
         {
             printf("Value at index %d: %d\n", i, *value);
@@ -39,6 +48,6 @@ int main()
         }
     }
 
-    ArenaAllocator_Free(&arena);
+    ArenaAllocator_Free(arena);
     return 0;
 }

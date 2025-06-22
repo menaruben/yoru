@@ -3,23 +3,23 @@
 
 #include "../inttypes/yoru_inttypes.h"
 
-#define modulo(a, b)          \
-    do                        \
-    {                         \
-        if (a == 0 || a == b) \
-        {                     \
-            return 0;         \
-        }                     \
-                              \
-        while (a < 0)         \
-        {                     \
-            a += b;           \
-        }                     \
-                              \
-        while (a >= b)        \
-        {                     \
-            a -= b;           \
-        }                     \
+#define modulo(a, b)                    \
+    do                                  \
+    {                                   \
+        if (a == 0 || a == b || b <= 0) \
+        {                               \
+            return 0;                   \
+        }                               \
+                                        \
+        while (a < 0)                   \
+        {                               \
+            a += b;                     \
+        }                               \
+                                        \
+        while (a >= b)                  \
+        {                               \
+            a -= b;                     \
+        }                               \
     } while (0);
 
 static inline i8 i8_modulo(i8 a, i8 b)
