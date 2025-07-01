@@ -17,4 +17,18 @@
         exit(-1);                                                                             \
     }
 
+#define ASSERT_NULL(ptr)                                                                          \
+    if ((ptr) != NULL)                                                                            \
+    {                                                                                             \
+        fprintf(stderr, "Assertion failed: %s is not NULL at %s:%d\n", #ptr, __FILE__, __LINE__); \
+        exit(-1);                                                                                 \
+    }
+
+#define ASSERT_NOT_NULL(ptr)                                                                  \
+    if ((ptr) == NULL)                                                                        \
+    {                                                                                         \
+        fprintf(stderr, "Assertion failed: %s is NULL at %s:%d\n", #ptr, __FILE__, __LINE__); \
+        exit(-1);                                                                             \
+    }
+
 #endif

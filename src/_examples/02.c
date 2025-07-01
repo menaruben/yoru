@@ -1,28 +1,49 @@
 #include "../yoru.h"
-#include <stdio.h>
 
-List_T(i32);
+#define ARRAY_SIZE 10
 
-int main()
+#define INIT_ARRAY(arr)                         \
+    do                                          \
+    {                                           \
+        for (size_t i = 0; i < ARRAY_SIZE; i++) \
+        {                                       \
+            arr[i] = (int)i;                    \
+        }                                       \
+    } while (0)
+
+#define PRINT_ARRAY(arr)                        \
+    do                                          \
+    {                                           \
+        for (size_t i = 0; i < ARRAY_SIZE; i++) \
+        {                                       \
+            printf("%d ", arr[i]);              \
+        }                                       \
+        printf("\n");                           \
+    } while (0)
+
+int main(void)
 {
-    ArenaAllocator_t *arena = ArenaAllocator_Init(1000 * sizeof(i32));
-    List_i32 list = List_i32_Init();
+    Allocator_t *allocator = HeapAllocator_new();
+    ASSERT_NOT_NULL(allocator);
 
-    for (i32 i = 0; i < 5; i++)
-    {
-        List_i32_PushBack(arena, &list, i * 10);
-    }
-    // [0, 10, 20, 30, 40]
+    // allocate an array on heap
+    int *arr1 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
+    ASSERT_NOT_NULL(arr1);
+    INIT_ARRAY(arr1);
+    PRINT_ARRAY(arr1);
 
-    List_i32_Insert(arena, &list, 2, 999); // [0, 10, 999, 20, 30, 40]
-    List_i32_Remove(&list, 3);              // [0, 10, 999, 30, 40]
+    // allocate another array on heap
+    int *arr2 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
+    ASSERT_NOT_NULL(arr2);
+    INIT_ARRAY(arr2);
+    PRINT_ARRAY(arr2);
 
-    for (i32 i = 0; i < list.size; i++)
-    {
-        i32 *val = List_i32_Get(&list, i);
-        printf("List[%d] = %d\n", i, *val);
-    }
+    // free the arrays
+    allocator->free(arr1);
+    allocator->free(arr2);
 
-    ArenaAllocator_Free(arena);
+    // free the allocator
+    free(allocator->context);
+
     return 0;
 }

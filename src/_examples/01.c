@@ -1,53 +1,51 @@
 #include "../yoru.h"
-#include <stdio.h>
 
-// generate type and function defitions for a static array of i32 (typedef for int32_t, see yoru_inttypes.h)
-Array_T(i32);
+#define ARRAY_SIZE 10
 
-int main()
+#define ARENA_SIZE (1024 * sizeof(int))
+
+#define INIT_ARRAY(arr)                         \
+    do                                          \
+    {                                           \
+        for (size_t i = 0; i < ARRAY_SIZE; i++) \
+        {                                       \
+            arr[i] = (int)i;                    \
+        }                                       \
+    } while (0)
+
+#define PRINT_ARRAY(arr)                        \
+    do                                          \
+    {                                           \
+        for (size_t i = 0; i < ARRAY_SIZE; i++) \
+        {                                       \
+            printf("%d ", arr[i]);              \
+        }                                       \
+        printf("\n");                           \
+    } while (0)
+
+int main(void)
 {
-    ArenaAllocator_t *arena = ArenaAllocator_Init(1024 * sizeof(i32));
-    if (arena == NULL)
-    {
-        fprintf(stderr, "Failed to initialize arena allocator.\n");
-        return 1;
-    }
+    Allocator_t *allocator = ArenaAllocator_new(ARENA_SIZE);
+    ASSERT_NOT_NULL(allocator);
 
-    i32 *ptr = ArenaAllocator_Alloc(arena, 10 * sizeof(i32));
-    if (ptr == NULL)
-    {
-        fprintf(stderr, "Failed to allocate array.\n");
-        ArenaAllocator_Free(arena);
-        return 1;
-    }
+    // allocate an array on arena
+    int *arr1 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
+    ASSERT_NOT_NULL(arr1);
+    INIT_ARRAY(arr1);
+    PRINT_ARRAY(arr1);
 
-    Array_i32 arr = Array_i32_Init(ptr, 10);
-    for (i32 i = 0; i < 20; i++)
-    {
-        // note: index will get normalized between 0 and length of
-        // the array using modulo operation
-        // That means if you would do Array_i32_Put(&arr, -1, 20)
-        // you would change the last element of the array to 20
-        // because -1 % 10 == 9 which is the last index of the array
-        Array_i32_Put(&arr, i, i * 2);
-    }
+    // allocate another array on arena
+    int *arr2 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
+    ASSERT_NOT_NULL(arr2);
+    INIT_ARRAY(arr2);
+    PRINT_ARRAY(arr2);
 
-    // retrieve and print the values from the array
-    for (i32 i = 0; i < 20; i++)
-    {
-        // note: index will get normalized between 0 and length of
-        // the array using modulo operation
-        const i32 *value = Array_i32_Get(&arr, i);
-        if (value)
-        {
-            printf("Value at index %d: %d\n", i, *value);
-        }
-        else
-        {
-            printf("No value at index %d\n", i);
-        }
-    }
+    // allocate array too large for the arena
+    int *arr3 = (int *)allocator->alloc(allocator->context, 2 * ARENA_SIZE);
+    ASSERT_NULL(arr3); // should return NULL since the arena is too
 
-    ArenaAllocator_Free(arena);
+    // instead of freeing each array, we free the entire arena instead :)
+    allocator->free(allocator->context); // free arena
+    free(allocator);                     // free allocator
     return 0;
 }
