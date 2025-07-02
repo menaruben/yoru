@@ -3,6 +3,20 @@
 
 #include <stdio.h>
 
+#define ERROR(msg)                                                        \
+    do                                                                    \
+    {                                                                     \
+        fprintf(stderr, "Error: %s at %s:%d\n", msg, __FILE__, __LINE__); \
+        exit(-1);                                                         \
+    } while (0)
+
+#define ASSERT(condition, msg)                                                       \
+    if (!(condition))                                                                \
+    {                                                                                \
+        fprintf(stderr, "Assertion failed: %s at %s:%d\n", msg, __FILE__, __LINE__); \
+        exit(-1);                                                                    \
+    }
+
 #define ASSERT_EQUAL(a, b)                                                                    \
     if ((a) != (b))                                                                           \
     {                                                                                         \
