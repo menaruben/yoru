@@ -10,7 +10,7 @@
 
 #define INITIAL_CAPACITY 16
 
-static inline void vec_push_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Allocator_t *allocator);
+static inline void vec_append_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Allocator_t *allocator);
 
 static inline void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size);
 
@@ -38,8 +38,8 @@ static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator);
         (vec).capacity = 0;                                         \
     } while (0)
 
-#define vec_push(vec, item, allocator_ptr) \
-    vec_push_impl((void **)&((vec).items), &(item), sizeof(*(vec).items), &(vec).size, &(vec).capacity, allocator_ptr)
+#define vec_append(vec, item, allocator_ptr) \
+    vec_append_impl((void **)&((vec).items), &(item), sizeof(*(vec).items), &(vec).size, &(vec).capacity, allocator_ptr)
 
 #define vec_get(vec, index) \
     (typeof(vec.items))vec_get_impl((void *)vec.items, index, vec.size, sizeof(*(vec).items))
@@ -65,7 +65,7 @@ static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator)
     }
 }
 
-static inline void vec_push_impl(
+static inline void vec_append_impl(
     void **items,
     void *item,
     size_t item_size,
@@ -90,7 +90,7 @@ static inline void vec_push_impl(
 
 static inline void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size)
 {
-    boolean within_bounds = index < size;
+    boolean within_bounds = index < size && index >= 0;
     ASSERT(within_bounds, "Index out of bounds.");
 
     void *item_ptr = (char *)items + index * item_size;

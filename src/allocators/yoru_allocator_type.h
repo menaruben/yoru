@@ -16,7 +16,6 @@ typedef struct Allocator_t
 } Allocator_t;
 
 // arena allocator
-
 static void *arena_alloc(void *context, size_t size)
 {
   ArenaAllocator_t *arena = (ArenaAllocator_t *)context;
