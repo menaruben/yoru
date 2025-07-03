@@ -45,7 +45,6 @@ int main(void)
     ASSERT_NULL(arr3); // should return NULL since the arena is too
 
     // instead of freeing each array, we free the entire arena instead :)
-    allocator->free(allocator->context); // free arena
-    free(allocator);                     // free allocator
+    allocator->free(allocator->context, NULL); // free arena
     return 0;
 }

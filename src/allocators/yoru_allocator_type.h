@@ -10,7 +10,7 @@
 typedef struct Allocator_t
 {
   FUNC(void *, alloc, void *, size_t);
-  FUNC(void, free, void *);
+  FUNC(void, free, void *, void *);
   FUNC(void *, realloc, void *, size_t);
   void *context;
 } Allocator_t;
@@ -30,8 +30,10 @@ static void *arena_realloc(void *ptr, size_t size)
   return NULL;
 }
 
-static inline void arena_free(void *context)
+static inline void arena_free(void *context, void *ptr)
 {
+  (void)ptr;
+  ASSERT_NOT_NULL(context);
   ArenaAllocator_t *arena = (ArenaAllocator_t *)context;
   ArenaAllocator_Free(arena);
 }
@@ -65,8 +67,10 @@ static inline void *heap_realloc(void *ptr, size_t size)
   return realloc(ptr, size);
 }
 
-static inline void heap_free(void *ptr)
+static inline void heap_free(void *context, void *ptr)
 {
+  (void)context;
+  ASSERT_NOT_NULL(ptr);
   free(ptr);
 }
 

@@ -47,6 +47,5 @@ int main(void)
     // i32 *out_of_bounds_data = list_get(list, list.size + 1);
 
     list_destroy(list, allocator);
-    allocator->free(allocator);
     return 0;
 }

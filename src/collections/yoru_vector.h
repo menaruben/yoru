@@ -61,7 +61,7 @@ static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator)
     ASSERT_NOT_NULL(allocator->free);
     if (items != NULL)
     {
-        allocator->free(items);
+        allocator->free(allocator->context, items);
     }
 }
 

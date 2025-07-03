@@ -39,11 +39,7 @@ int main(void)
     PRINT_ARRAY(arr2);
 
     // free the arrays
-    allocator->free(arr1);
-    allocator->free(arr2);
-
-    // free the allocator
-    free(allocator->context);
-
+    allocator->free(allocator->context, arr1);
+    allocator->free(allocator->context, arr2);
     return 0;
 }

@@ -1,6 +1,6 @@
 #include "../yoru.h"
 
-#define VECTOR_SIZE 1024
+#define VECTOR_SIZE 32
 
 typedef struct Data_t
 {

@@ -94,10 +94,11 @@ static inline void list_destroy_impl(Allocator_t *allocator, ListNode_t *head)
     while (node != NULL && node != head)
     {
         ListNode_t *next = node->next;
-        allocator->free(node);
+        allocator->free(allocator->context, node);
         node = next;
     }
-    allocator->free(head);
+    allocator->free(allocator->context, head);
+    head = NULL; // avoid dangling pointer
 }
 
 static inline void list_insert_impl(
@@ -158,7 +159,8 @@ static inline void list_remove_impl(Allocator_t *allocator, ListNode_t *head, si
     ASSERT_NOT_NULL(node->next);
     node->prev->next = node->next;
     node->next->prev = node->prev;
-    allocator->free(node);
+    allocator->free(allocator->context, node);
+    node = NULL; // avoid dangling pointer
     (*list_size)--;
 }
 
