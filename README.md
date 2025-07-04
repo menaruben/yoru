@@ -13,7 +13,8 @@ I am adding some features like:
     - linked list
     - dynamic array / vector
     - trie (TODO)
-    - hash map and hash set (TODO) 
+    - hash map and hash set (TODO)
+    - iterators (TODO) -> might also implement some [fluent interface stuff](https://en.wikipedia.org/wiki/Fluent_interface)
 - strings
 - simpler string lib (TODO)
 - string builders (TODO)
@@ -23,6 +24,7 @@ I am adding some features like:
     - heap allocator
 - some math utilities like an actual modulo function (because C's `%` operator is not a modulo operator but a remainder operator)
 - and probably a lot more when I think of other things I want to add
+- maybe even some simple callbacks
 
 # Examples
 You can find examples in the [examples](./src/_examples/) folder and run them with `make run-<example_number>`. 
