@@ -4,7 +4,10 @@
 yoru is a c library that aims to add some convenience to C and to make life simpler.
 I decided to write this library because I really enjoy writing C, but I often find myself repeating the same code in different projects.
 
-Yoru is not here to save you from C, but to make it easier to use and to get work done. This means that I am adding some features like:
+Yoru is not here to save you from C, but to make it easier to use and to get work done. If you really want to use a modern C you might want to use
+something like Zig instead. ^^
+
+I am adding some features like:
 - basic generic data structures without being able to go out of bounds
     - array (TODO)
     - linked list
