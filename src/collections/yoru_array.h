@@ -1,6 +1,8 @@
 #ifndef __YORU_ARRAY_H__
 #define __YORU_ARRAY_H__
 
+// TODO: Implement
+
 #include <stddef.h>
 #include <string.h>
 #include "../allocators/yoru_allocators.h"

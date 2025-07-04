@@ -4,7 +4,9 @@
 #include <stddef.h>
 
 #include "../math/yoru_math_tests.h"
-#include "../strings/yoru_strings_test.h"
+#include "../strings/yoru_strings_tests.h"
+#include "../allocators/yoru_allocators_tests.h"
+#include "../collections/yoru_collections_tests.h"
 
 static YoruTestFunc_t test_funcs[] = {
     // Math tests
@@ -25,10 +27,13 @@ static YoruTestFunc_t test_funcs[] = {
     {.name = "test_string_equals", .test_func = test_string_equals},
     {.name = "test_string_equals_linear", .test_func = test_string_equals_linear},
 
-    // TODO:
-    // - Allocators
-    // - Collections
-};
+    // Allocator tests
+    {.name = "test_arena_allocator", .test_func = test_arena_allocator},
+    {.name = "test_heap_allocator", .test_func = test_heap_allocator},
+
+    // Collections tests
+    {.name = "test_list_basic", .test_func = test_list_basic},
+    {.name = "test_vector_basic", .test_func = test_vector_basic}};
 
 static const size_t test_count = sizeof(test_funcs) / sizeof(test_funcs[0]);
 

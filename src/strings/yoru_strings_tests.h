@@ -5,7 +5,7 @@
 
 YoruTestResult_t test_string_new(void)
 {
-    const u8 *cstr = (const u8 *)"hello";
+    u8 *cstr = "hello";
     String_t s = String_new(cstr);
     if (s.length != 5)
     {
@@ -20,7 +20,7 @@ YoruTestResult_t test_string_new(void)
 
 YoruTestResult_t test_string_substring(void)
 {
-    String_t s = String_new((const u8 *)"abcdef");
+    String_t s = String_new("abcdef");
     String_t sub = String_substring(s, 1, 4);
     if (sub.length != 3 || memcmp(sub.str, "bcd", 3) != 0)
     {
@@ -36,7 +36,7 @@ YoruTestResult_t test_string_substring(void)
 
 YoruTestResult_t test_string_at(void)
 {
-    String_t s = String_new((const u8 *)"xyz");
+    String_t s = String_new("xyz");
     String_t ch = String_at(s, 1);
     if (ch.length != 1 || ch.str[0] != 'y')
     {
@@ -52,10 +52,10 @@ YoruTestResult_t test_string_at(void)
 
 YoruTestResult_t test_string_equals(void)
 {
-    String_t a = String_new((const u8 *)"test");
-    String_t b = String_new((const u8 *)"test");
-    String_t c = String_new((const u8 *)"Test");
-    String_t d = String_new((const u8 *)"testing");
+    String_t a = String_new("test");
+    String_t b = String_new("test");
+    String_t c = String_new("Test");
+    String_t d = String_new("testing");
     if (!String_equals(&a, &b))
     {
         return (YoruTestResult_t){false, "a != b"};
@@ -73,10 +73,10 @@ YoruTestResult_t test_string_equals(void)
 
 YoruTestResult_t test_string_equals_linear(void)
 {
-    String_t a = String_new((const u8 *)"abc123");
-    String_t b = String_new((const u8 *)"abc123");
-    String_t c = String_new((const u8 *)"abc124");
-    String_t d = String_new((const u8 *)"abc12");
+    String_t a = String_new("abc123");
+    String_t b = String_new("abc123");
+    String_t c = String_new("abc124");
+    String_t d = String_new("abc12");
     if (!String_equals_linear(&a, &b))
     {
         return (YoruTestResult_t){false, "a != b"};

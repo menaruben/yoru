@@ -13,14 +13,14 @@ typedef struct
     const size_t length;
 } String_t;
 
-String_t String_new(const u8 *str);
+String_t String_new(u8 *str);
 const u8 *String_cstr(const String_t s, Allocator_t *allocator);
 String_t String_substring(const String_t s, size_t start, size_t end);
 String_t String_at(const String_t s, size_t index);
 bool String_equals(const String_t *a, const String_t *b);
 bool String_equals_linear(const String_t *a, const String_t *b);
 
-String_t String_new(const u8 *str)
+String_t String_new(u8 *str)
 {
     size_t len = 0;
     while (str[len] != '\0')

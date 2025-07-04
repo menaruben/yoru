@@ -28,7 +28,7 @@ static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator);
     }
 
 #define vec_new(T, allocator_ptr) \
-    {.items = vec_alloc_items(allocator_ptr, sizeof(T)), .size = 0, .capacity = INITIAL_CAPACITY}
+    {.items = (T *)vec_alloc_items(allocator_ptr, sizeof(T)), .size = 0, .capacity = INITIAL_CAPACITY}
 
 #define vec_destroy(vec, allocator_ptr)                             \
     do                                                              \

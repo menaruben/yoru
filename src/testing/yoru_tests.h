@@ -33,12 +33,12 @@ u8 YoruTest_run(YoruTestSuite_t *suite)
         if (result.success)
         {
             suite->passed++;
-            printf("Test '%s' passed.\n", test->name);
+            printf("✅ '%s' passed.\n", test->name);
             continue;
         }
 
         suite->failed++;
-        printf("Test '%s' failed: %s\n", test->name, result.message);
+        printf("❌ '%s' failed: %s\n", test->name, result.message);
     }
 
     printf("Test suite completed: %zu passed, %zu failed.\n", suite->passed, suite->failed);

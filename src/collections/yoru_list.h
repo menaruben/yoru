@@ -33,7 +33,7 @@ static inline void *list_get_impl(ListNode_t *head, size_t index, size_t *list_s
 static inline void list_remove_impl(Allocator_t *allocator, ListNode_t *head, size_t index, size_t *list_size);
 
 #define list_new(T, allocator_ptr) \
-    {.head = listnode_new_impl(allocator_ptr), .size = 0, .t = (T *)NULL}
+    {.head = (ListNode_t *)listnode_new_impl(allocator_ptr), .size = 0, .t = (T *)NULL}
 
 #define list_destroy(list, allocator_ptr)              \
     do                                                 \
