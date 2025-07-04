@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "../asserts/yoru_asserts.h"
 #include "../inttypes/yoru_inttypes.h"
 #include "../allocators/yoru_allocators.h"
@@ -90,7 +91,7 @@ static inline void vec_append_impl(
 
 static inline void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size)
 {
-    boolean within_bounds = index < size && index >= 0;
+    bool within_bounds = index < size && index >= 0;
     ASSERT(within_bounds, "Index out of bounds.");
 
     void *item_ptr = (char *)items + index * item_size;

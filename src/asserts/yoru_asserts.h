@@ -2,6 +2,7 @@
 #define __YORU_ASSERTS_H__
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #define ERROR(msg)                                                        \
     do                                                                    \

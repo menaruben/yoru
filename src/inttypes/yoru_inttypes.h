@@ -20,8 +20,4 @@ typedef double f64;
 typedef size_t usize;
 typedef uintptr_t uptr;
 
-typedef u8 boolean;
-#define true 1
-#define false !true
-
 #endif

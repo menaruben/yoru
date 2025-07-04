@@ -38,7 +38,7 @@ static inline void array_free_items(Allocator_t *allocator, void *items)
 {
     ASSERT_NOT_NULL(allocator);
     ASSERT_NOT_NULL(items);
-    allocator->free(items);
+    allocator->free(allocator->context, items);
 }
 
 static inline void *array_get_impl(void *items, size_t index, size_t size, size_t item_size)

@@ -7,5 +7,7 @@
 #include "./math/yoru_math.h"
 #include "./asserts/yoru_asserts.h"
 #include "./utils/yoru_utils.h"
+#include "./strings/yoru_strings.h"
+#include "./testing/yoru_tests.h"
 
 #endif
