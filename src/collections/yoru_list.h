@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "../allocators/yoru_allocators.h"
 #include "../asserts/yoru_asserts.h"
+#include "../yoru_defs.h"
 
 typedef struct ListNode_t
 {
@@ -20,17 +21,17 @@ typedef struct ListNode_t
         T *t;             \
     }
 
-static inline void *listnode_new_impl(Allocator_t *allocator);
-static inline ListNode_t *listnode_get_at(ListNode_t *head, size_t index, size_t list_size);
+YORU_HELPER void *listnode_new_impl(Allocator_t *allocator);
+YORU_HELPER ListNode_t *listnode_get_at(ListNode_t *head, size_t index, size_t list_size);
 
-static inline void list_destroy_impl(Allocator_t *allocator, ListNode_t *head);
+YORU_HELPER void list_destroy_impl(Allocator_t *allocator, ListNode_t *head);
 
-static inline void list_insert_impl(Allocator_t *allocator, ListNode_t *head, size_t index, void *data, size_t *list_size);
-static inline void list_append_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size);
-static inline void list_prepend_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size);
+YORU_HELPER void list_insert_impl(Allocator_t *allocator, ListNode_t *head, size_t index, void *data, size_t *list_size);
+YORU_HELPER void list_append_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size);
+YORU_HELPER void list_prepend_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size);
 
-static inline void *list_get_impl(ListNode_t *head, size_t index, size_t *list_size);
-static inline void list_remove_impl(Allocator_t *allocator, ListNode_t *head, size_t index, size_t *list_size);
+YORU_HELPER void *list_get_impl(ListNode_t *head, size_t index, size_t *list_size);
+YORU_HELPER void list_remove_impl(Allocator_t *allocator, ListNode_t *head, size_t index, size_t *list_size);
 
 #define list_new(T, allocator_ptr) \
     {.head = (ListNode_t *)listnode_new_impl(allocator_ptr), .size = 0, .t = (T *)NULL}
@@ -58,7 +59,7 @@ static inline void list_remove_impl(Allocator_t *allocator, ListNode_t *head, si
 #define list_remove(allocator_ptr, list_ptr, index) \
     list_remove_impl(allocator_ptr, (list_ptr).head, index, &(list_ptr).size)
 
-static inline void *listnode_new_impl(Allocator_t *allocator)
+YORU_HELPER void *listnode_new_impl(Allocator_t *allocator)
 {
     ASSERT_NOT_NULL(allocator);
     ASSERT_NOT_NULL(allocator->alloc);
@@ -72,7 +73,7 @@ static inline void *listnode_new_impl(Allocator_t *allocator)
     return head;
 }
 
-static inline ListNode_t *listnode_get_at(ListNode_t *head, size_t index, size_t list_size)
+YORU_HELPER ListNode_t *listnode_get_at(ListNode_t *head, size_t index, size_t list_size)
 {
     ASSERT_NOT_NULL(head);
     ASSERT(index <= list_size, "Index out of bounds");
@@ -84,7 +85,7 @@ static inline ListNode_t *listnode_get_at(ListNode_t *head, size_t index, size_t
     return node;
 }
 
-static inline void list_destroy_impl(Allocator_t *allocator, ListNode_t *head)
+YORU_HELPER void list_destroy_impl(Allocator_t *allocator, ListNode_t *head)
 {
     ASSERT_NOT_NULL(allocator);
     ASSERT_NOT_NULL(allocator->free);
@@ -101,7 +102,7 @@ static inline void list_destroy_impl(Allocator_t *allocator, ListNode_t *head)
     head = NULL; // avoid dangling pointer
 }
 
-static inline void list_insert_impl(
+YORU_HELPER void list_insert_impl(
     Allocator_t *allocator,
     ListNode_t *head,
     size_t index,
@@ -128,17 +129,17 @@ static inline void list_insert_impl(
     (*list_size)++;
 }
 
-static inline void list_append_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size)
+YORU_HELPER void list_append_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size)
 {
     list_insert_impl(allocator, head, *list_size, data, list_size);
 }
 
-static inline void list_prepend_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size)
+YORU_HELPER void list_prepend_impl(Allocator_t *allocator, ListNode_t *head, void *data, size_t *list_size)
 {
     list_insert_impl(allocator, head, 0, data, list_size);
 }
 
-static inline void *list_get_impl(ListNode_t *head, size_t index, size_t *list_size)
+YORU_HELPER void *list_get_impl(ListNode_t *head, size_t index, size_t *list_size)
 {
     ASSERT_NOT_NULL(head);
     ASSERT(index < *list_size, "Index out of bounds");
@@ -147,7 +148,7 @@ static inline void *list_get_impl(ListNode_t *head, size_t index, size_t *list_s
     return node->data;
 }
 
-static inline void list_remove_impl(Allocator_t *allocator, ListNode_t *head, size_t index, size_t *list_size)
+YORU_HELPER void list_remove_impl(Allocator_t *allocator, ListNode_t *head, size_t index, size_t *list_size)
 {
     ASSERT_NOT_NULL(allocator);
     ASSERT_NOT_NULL(allocator->free);

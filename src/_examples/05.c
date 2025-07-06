@@ -11,9 +11,7 @@ int main(void)
     Allocator_t *allocator = HeapAllocator_new();
     ASSERT_NOT_NULL(allocator);
 
-    // The HashMap is a good choice for storing key-value pairs of a single t+ype,
-    // but I wanted to implemented a data structure that can be flexible (unlike the others).
-    // Trie is a good data structure for things like json (de-)serialization..
+    // A Trie can store any type of data, it is not fixed to a specific type.
     TrieNode_t *root = trie_new(allocator);
 
     // Store an int

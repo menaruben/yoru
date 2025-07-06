@@ -3,18 +3,72 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include "yoru_allocator_type.h"
+#include "../yoru_defs.h"
 
-void *HeapAllocator_Alloc(size_t size)
+YORU_API Allocator_t *HeapAllocator_new(void);
+
+YORU_PRIVATE void *heap_alloc(void *context, size_t size);
+YORU_PRIVATE void *heap_realloc(void *ptr, size_t size);
+YORU_PRIVATE void heap_free(void *context, void *ptr);
+
+YORU_PRIVATE void *HeapAllocator_Alloc(size_t size);
+YORU_PRIVATE void *HeapAllocator_Realloc(void *ptr, size_t size);
+YORU_PRIVATE void HeapAllocator_Free(void *ptr);
+
+/**
+ * @brief Creates and initializes a new heap allocator instance.
+ *
+ * This function allocates and returns a pointer to a new Allocator_t object
+ * that manages memory using the heap. The returned allocator can be used
+ * for dynamic memory allocation and deallocation.
+ *
+ * @return Pointer to a newly created Allocator_t instance, or NULL on failure.
+ */
+YORU_API Allocator_t *HeapAllocator_new(void)
 {
+    Allocator_t *allocator = (Allocator_t *)malloc(sizeof(Allocator_t));
+    if (allocator == NULL)
+        return NULL;
+
+    allocator->context = NULL;
+    allocator->alloc = heap_alloc;
+    allocator->realloc = heap_realloc;
+    allocator->free = heap_free;
+    return allocator;
+}
+
+// Wrappers around the heap functions to fit the Allocator_t interface
+YORU_PRIVATE void *heap_alloc(void *context, size_t size)
+{
+    (void)context;
     return malloc(size);
 }
 
-void *HeapAllocator_Realloc(void *ptr, size_t size)
+YORU_PRIVATE void *heap_realloc(void *ptr, size_t size)
 {
     return realloc(ptr, size);
 }
 
-void HeapAllocator_Free(void *ptr)
+YORU_PRIVATE void heap_free(void *context, void *ptr)
+{
+    (void)context;
+    ASSERT_NOT_NULL(ptr);
+    free(ptr);
+}
+
+// Implementation of the heap allocator functions
+YORU_PRIVATE void *HeapAllocator_Alloc(size_t size)
+{
+    return malloc(size);
+}
+
+YORU_PRIVATE void *HeapAllocator_Realloc(void *ptr, size_t size)
+{
+    return realloc(ptr, size);
+}
+
+YORU_PRIVATE void HeapAllocator_Free(void *ptr)
 {
     free(ptr);
 }

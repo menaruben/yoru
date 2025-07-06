@@ -8,13 +8,14 @@
 #include "../asserts/yoru_asserts.h"
 #include "../inttypes/yoru_inttypes.h"
 #include "../allocators/yoru_allocators.h"
+#include "../yoru_defs.h"
 
 #define INITIAL_CAPACITY 16
 
-static inline void vec_append_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Allocator_t *allocator);
-static inline void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size);
-static inline void *vec_alloc_items(Allocator_t *allocator, size_t item_size);
-static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator);
+YORU_HELPER void vec_append_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Allocator_t *allocator);
+YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size);
+YORU_HELPER void *vec_alloc_items(Allocator_t *allocator, size_t item_size);
+YORU_HELPER void vec_destroy_items_impl(void *items, Allocator_t *allocator);
 
 #define Vec_t(T)         \
     struct               \
@@ -42,7 +43,7 @@ static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator);
 #define vec_get(vec, index) \
     (typeof(vec.items))vec_get_impl((void *)vec.items, index, vec.size, sizeof(*(vec).items))
 
-static inline void *vec_alloc_items(Allocator_t *allocator, size_t item_size)
+YORU_HELPER void *vec_alloc_items(Allocator_t *allocator, size_t item_size)
 {
     ASSERT_NOT_NULL(allocator);
     ASSERT_NOT_NULL(allocator->alloc);
@@ -53,7 +54,7 @@ static inline void *vec_alloc_items(Allocator_t *allocator, size_t item_size)
     return items;
 }
 
-static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator)
+YORU_HELPER void vec_destroy_items_impl(void *items, Allocator_t *allocator)
 {
     ASSERT_NOT_NULL(allocator);
     ASSERT_NOT_NULL(allocator->free);
@@ -63,7 +64,7 @@ static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator)
     }
 }
 
-static inline void vec_append_impl(
+YORU_HELPER void vec_append_impl(
     void **items,
     void *item,
     size_t item_size,
@@ -86,7 +87,7 @@ static inline void vec_append_impl(
     (*size)++;
 }
 
-static inline void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size)
+YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size)
 {
     bool within_bounds = index < size && index >= 0;
     ASSERT(within_bounds, "Index out of bounds.");

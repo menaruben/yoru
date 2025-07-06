@@ -26,6 +26,7 @@ static YoruTestFunc_t test_funcs[] = {
     {.name = "test_string_at", .test_func = test_string_at},
     {.name = "test_string_equals", .test_func = test_string_equals},
     {.name = "test_string_equals_linear", .test_func = test_string_equals_linear},
+    {.name = "test_string_format", .test_func = test_string_format},
 
     // Allocator tests
     {.name = "test_arena_allocator", .test_func = test_arena_allocator},

@@ -5,7 +5,7 @@
 
 YoruTestResult_t test_string_new(void)
 {
-    u8 *cstr = "hello";
+    const char *cstr = "hello";
     String_t s = String_new(cstr);
     if (s.length != 5)
     {
@@ -90,4 +90,39 @@ YoruTestResult_t test_string_equals_linear(void)
         return (YoruTestResult_t){false, "a == d"};
     }
     return (YoruTestResult_t){true, "test_string_equals_linear passed"};
+}
+
+YoruTestResult_t test_string_format(void)
+{
+    String_t s = String_format("Hello %s, your score is %d", "Alice", 42);
+    if (s.length == 0 || s.str == NULL)
+    {
+        return (YoruTestResult_t){false, "String format failed"};
+    }
+
+    const u8 expected[] = "Hello Alice, your score is 42";
+    if (memcmp(s.str, expected, s.length) != 0)
+    {
+        return (YoruTestResult_t){false, "Formatted string mismatch"};
+    }
+
+    return (YoruTestResult_t){true, "test_string_format passed"};
+}
+
+YoruTestResult_t test_string_to_cstr(void)
+{
+    Allocator_t *allocator = HeapAllocator_new();
+    if (allocator == NULL)
+    {
+        return (YoruTestResult_t){false, "Allocator creation failed"};
+    }
+
+    String_t s = String_new("hello");
+    const char *cstr = String_to_cstr(s, allocator);
+    if (cstr == NULL || strcmp(cstr, "hello") != 0)
+    {
+        return (YoruTestResult_t){false, "String to C string conversion failed"};
+    }
+    free((void *)cstr); // Free the allocated C string
+    return (YoruTestResult_t){true, "test_string_to_cstr passed"};
 }
