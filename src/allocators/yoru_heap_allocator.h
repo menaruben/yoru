@@ -12,10 +12,6 @@ YORU_PRIVATE void *heap_alloc(void *context, size_t size);
 YORU_PRIVATE void *heap_realloc(void *ptr, size_t size);
 YORU_PRIVATE void heap_free(void *context, void *ptr);
 
-YORU_PRIVATE void *HeapAllocator_Alloc(size_t size);
-YORU_PRIVATE void *HeapAllocator_Realloc(void *ptr, size_t size);
-YORU_PRIVATE void HeapAllocator_Free(void *ptr);
-
 /**
  * @brief Creates and initializes a new heap allocator instance.
  *
@@ -38,7 +34,6 @@ YORU_API Allocator_t *HeapAllocator_new(void)
     return allocator;
 }
 
-// Wrappers around the heap functions to fit the Allocator_t interface
 YORU_PRIVATE void *heap_alloc(void *context, size_t size)
 {
     (void)context;
@@ -54,22 +49,6 @@ YORU_PRIVATE void heap_free(void *context, void *ptr)
 {
     (void)context;
     ASSERT_NOT_NULL(ptr);
-    free(ptr);
-}
-
-// Implementation of the heap allocator functions
-YORU_PRIVATE void *HeapAllocator_Alloc(size_t size)
-{
-    return malloc(size);
-}
-
-YORU_PRIVATE void *HeapAllocator_Realloc(void *ptr, size_t size)
-{
-    return realloc(ptr, size);
-}
-
-YORU_PRIVATE void HeapAllocator_Free(void *ptr)
-{
     free(ptr);
 }
 

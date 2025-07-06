@@ -30,6 +30,12 @@ int main(void)
     // out of bounds access exits application with an error
     // vec_get(vec, 2 * VECTOR_SIZE);
 
+    // set value at index 13, if the index is out of bounds, the vector DOES NOT resize
+    Data_t new_data = {.data = 100};
+    vec_set(vec, 13, new_data);
+    Data_t *data = vec_get(vec, 13);
+    printf("Data at index 13 after set: %d\n", data->data);
+
     vec_destroy(vec, allocator);
     return 0;
 }

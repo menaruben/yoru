@@ -13,9 +13,12 @@
 #define INITIAL_CAPACITY 16
 
 YORU_HELPER void vec_append_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Allocator_t *allocator);
-YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size);
+YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t capacity, size_t item_size);
+YORU_HELPER void vec_set_impl(void *items, size_t index, void *item, size_t item_size, size_t capacity);
+YORU_HELPER bool is_within_bounds(size_t index, size_t capacity);
 YORU_HELPER void *vec_alloc_items(Allocator_t *allocator, size_t item_size);
 YORU_HELPER void vec_destroy_items_impl(void *items, Allocator_t *allocator);
+YORU_HELPER void *vec_grow_items(Allocator_t *allocator, void **items, size_t *size, size_t *capacity, size_t item_size);
 
 #define Vec_t(T)         \
     struct               \
@@ -42,6 +45,9 @@ YORU_HELPER void vec_destroy_items_impl(void *items, Allocator_t *allocator);
 
 #define vec_get(vec, index) \
     (typeof(vec.items))vec_get_impl((void *)vec.items, index, vec.size, sizeof(*(vec).items))
+
+#define vec_set(vec, index, item) \
+    vec_set_impl((void *)vec.items, index, &(item), sizeof(*(vec).items), vec.size)
 
 YORU_HELPER void *vec_alloc_items(Allocator_t *allocator, size_t item_size)
 {
@@ -74,28 +80,48 @@ YORU_HELPER void vec_append_impl(
 {
     if (*size >= *capacity)
     {
-        while (*capacity <= *size)
-        {
-            *capacity *= 2; // Double the capacity until it is sufficient
-        }
-        void *new_items = allocator->realloc(*items, (*capacity) * item_size);
-        ASSERT_NOT_NULL(new_items);
-        *items = new_items;
+        *items = vec_grow_items(allocator, items, size, capacity, item_size);
     }
     size_t index = *size * item_size;
-    memcpy((char *)(*items) + index, item, item_size); // Copy the item into the vector
+    memcpy((char *)(*items) + index, item, item_size);
     (*size)++;
 }
 
-YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size)
+YORU_HELPER void vec_set_impl(void *items, size_t index, void *item, size_t item_size, size_t capacity)
 {
-    bool within_bounds = index < size && index >= 0;
-    ASSERT(within_bounds, "Index out of bounds.");
-
+    ASSERT(is_within_bounds(index, capacity), "Index out of bounds.");
     void *item_ptr = (char *)items + index * item_size;
-    ASSERT(item_ptr != NULL, "Item pointer is NULL.");
+    ASSERT_NOT_NULL(item_ptr);
+    memcpy(item_ptr, item, item_size);
+}
 
+YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t capacity, size_t item_size)
+{
+    ASSERT(is_within_bounds(index, capacity), "Index out of bounds.");
+    void *item_ptr = (char *)items + index * item_size;
+    ASSERT_NOT_NULL(item_ptr);
     return item_ptr;
+}
+
+YORU_HELPER bool is_within_bounds(size_t index, size_t capacity)
+{
+    return index < capacity && index >= 0;
+}
+
+YORU_HELPER void *vec_grow_items(Allocator_t *allocator, void **items, size_t *size, size_t *capacity, size_t item_size)
+{
+    ASSERT_NOT_NULL(allocator);
+    ASSERT_NOT_NULL(allocator->realloc);
+    ASSERT_NOT_NULL(items);
+    ASSERT_NOT_NULL(*items);
+    while (*capacity <= *size)
+    {
+        *capacity *= 2;
+    }
+    void *new_items = allocator->realloc(*items, (*capacity) * item_size);
+    ASSERT_NOT_NULL(new_items);
+    *items = new_items;
+    return new_items;
 }
 
 #endif

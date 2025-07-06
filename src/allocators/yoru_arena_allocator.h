@@ -61,7 +61,9 @@ YORU_PRIVATE void *arena_realloc(void *ptr, size_t size)
 {
   (void)ptr;
   (void)size;
+#ifdef YORU_DEBUG
   ERROR("Realloc is not supported in ArenaAllocator");
+#endif
   return NULL;
 }
 
