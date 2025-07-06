@@ -108,7 +108,7 @@ YoruTestResult_t test_trie_basic(void)
     if (!retrieved)
         return (YoruTestResult_t){false, "Failed to retrieve person from trie"};
 
-    if (memcmp(retrieved, &person, sizeof(person) != 0))
+    if (memcmp(retrieved, &person, sizeof(person)))
         return (YoruTestResult_t){false, "Retrieved person does not match original"};
 
     trie_destroy(trie, allocator);
