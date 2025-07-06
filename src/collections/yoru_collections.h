@@ -3,6 +3,6 @@
 
 #include "yoru_vector.h"
 #include "yoru_list.h"
-// #include "yoru_array.h"
+#include "yoru_trie.h"
 
 #endif

@@ -40,8 +40,8 @@ u8 YoruTest_run(YoruTestSuite_t *suite)
         suite->failed++;
         printf("❌ '%s' failed: %s\n", test->name, result.message);
     }
-
-    printf("Test suite completed: %zu passed, %zu failed.\n", suite->passed, suite->failed);
+    f32 success_ratio = (suite->passed / suite->test_count) * 100;
+    printf("Test suite completed: %zu passed, %zu failed, success ratio: %.2f%%\n", suite->passed, suite->failed, success_ratio);
     return suite->failed > 0 ? 1 : 0;
 }
 

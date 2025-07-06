@@ -62,3 +62,55 @@ YoruTestResult_t test_vector_basic(void)
     vec_destroy(vec, allocator);
     return (YoruTestResult_t){true, "test_vector_basic passed"};
 }
+
+// Trie Tests
+YoruTestResult_t test_trie_basic(void)
+{
+    Allocator_t *allocator = HeapAllocator_new();
+    if (!allocator)
+        return (YoruTestResult_t){false, "Failed to create allocator"};
+
+    TrieNode_t *trie = trie_new(allocator);
+    if (!trie)
+        return (YoruTestResult_t){false, "Failed to create trie"};
+
+    struct
+    {
+        u8 pid[4];
+        u8 *name;
+        i32 age;
+        struct
+        {
+            u8 *country;
+            u8 *city;
+        } address;
+    } person = {
+        .pid = {0x01, 0x02, 0x03, 0x04},
+        .name = (u8 *)"Yoru",
+        .age = 18,
+        .address = {
+            .country = (u8 *)"Japan",
+            .city = (u8 *)"Tokyo"}};
+
+    trie_put(trie, person.pid, &person, allocator);
+    struct
+    {
+        u8 pid[4];
+        u8 *name;
+        i32 age;
+        struct
+        {
+            u8 *country;
+            u8 *city;
+        } address;
+    } *retrieved = trie_get(trie, person.pid);
+
+    if (!retrieved)
+        return (YoruTestResult_t){false, "Failed to retrieve person from trie"};
+
+    if (memcmp(retrieved, &person, sizeof(person) != 0))
+        return (YoruTestResult_t){false, "Retrieved person does not match original"};
+
+    trie_destroy(trie, allocator);
+    return (YoruTestResult_t){true, "test_trie_basic passed"};
+}

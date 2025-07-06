@@ -12,11 +12,8 @@
 #define INITIAL_CAPACITY 16
 
 static inline void vec_append_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Allocator_t *allocator);
-
 static inline void *vec_get_impl(void *items, size_t index, size_t size, size_t item_size);
-
 static inline void *vec_alloc_items(Allocator_t *allocator, size_t item_size);
-
 static inline void vec_destroy_items_impl(void *items, Allocator_t *allocator);
 
 #define Vec_t(T)         \

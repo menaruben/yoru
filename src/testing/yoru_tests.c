@@ -33,7 +33,9 @@ static YoruTestFunc_t test_funcs[] = {
 
     // Collections tests
     {.name = "test_list_basic", .test_func = test_list_basic},
-    {.name = "test_vector_basic", .test_func = test_vector_basic}};
+    {.name = "test_vector_basic", .test_func = test_vector_basic},
+    {.name = "test_trie_basic", .test_func = test_trie_basic},
+};
 
 static const size_t test_count = sizeof(test_funcs) / sizeof(test_funcs[0]);
 
