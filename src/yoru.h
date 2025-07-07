@@ -9,5 +9,6 @@
 #include "./utils/yoru_utils.h"
 #include "./strings/yoru_strings.h"
 #include "./testing/yoru_tests.h"
+#include "./futures/yoru_futures.h"
 
 #endif
