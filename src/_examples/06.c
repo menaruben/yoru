@@ -10,16 +10,6 @@
 
 #define DEMO_SLEEP_SECONDS 3
 
-#define FREE_IF_NOT_NULL(allocator_ptr, ptr)                  \
-    do                                                        \
-    {                                                         \
-        if (ptr)                                              \
-        {                                                     \
-            allocator_ptr->free(allocator_ptr->context, ptr); \
-            ptr = NULL;                                       \
-        }                                                     \
-    } while (0)
-
 struct Get_Response_t
 {
     char *content;
@@ -83,9 +73,7 @@ int main(void)
 
 cleanup:
     printf("[main: %lu] cleaning up...\n", mainthread);
-    FREE_IF_NOT_NULL(allocator, future.thread);
-    FREE_IF_NOT_NULL(allocator, future.ctx);
-
+    Future_destroy(&future);
     return 0;
 }
 
