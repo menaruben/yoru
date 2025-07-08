@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <curl/curl.h>
 #include <string.h>
+#include <unistd.h>
 #include "../yoru.h"
 
 // need to compile with -lcurl !!
@@ -15,7 +16,6 @@ struct Get_Request_t
 {
     const char *url;
     Allocator_t *allocator;
-    struct Get_Response_t *response;
 };
 
 struct DataWriterContext_t
@@ -32,21 +32,27 @@ int main(void)
     Allocator_t *allocator = HeapAllocator_new();
     ASSERT_NOT_NULL(allocator);
 
-    struct Get_Response_t res = {0};
     struct Get_Request_t req =
-        {
-            .url = "https://qrandom.io/api/random/string",
-            .allocator = allocator,
-            .response = &res};
+        {.url = "https://qrandom.io/api/random/string",
+         .allocator = allocator};
 
     Future_t future = {0};
     Future_init(&future, &http_get, (void *)&req);
-    res = *((struct Get_Request_t *)Future_await(&future))->response;
 
-    printf("%zu bytes received:\n", res.content_length);
-    printf("%s\n", res.content);
+    size_t elapsed = 0;
+    while (!future.ctx->ready)
+    {
+        printf("Fetching data... (%zu s)\n", elapsed);
+        sleep(1);
+        elapsed += 1;
+    }
 
-    allocator->free(allocator->context, res.content);
+    struct Get_Response_t *res = (struct Get_Response_t *)Future_await(&future);
+
+    printf("%zu bytes received:\n", res->content_length);
+    printf("%s\n", res->content);
+
+    allocator->free(allocator->context, res);
     return 0;
 }
 
@@ -69,19 +75,22 @@ static size_t write_data(void *contents, size_t size, size_t nmemb, void *userp)
 
 void *http_get(void *req)
 {
+    pid_t pid = getpid();
+    printf("http_get running on pid %d\n", pid);
+
     struct Get_Request_t *request = (struct Get_Request_t *)req;
     Allocator_t *allocator = request->allocator;
     CURL *curl_handle;
     CURLcode res;
 
-    ASSERT_NOT_NULL(request->response);
+    struct Get_Response_t *response = allocator->alloc(allocator->context, sizeof(struct Get_Response_t));
 
-    request->response->content = (char *)allocator->alloc(allocator->context, 1);
-    ASSERT_NOT_NULL(request->response->content);
-    request->response->content[0] = 0;
-    request->response->content_length = 0;
+    response->content = (char *)allocator->alloc(allocator->context, 1);
+    ASSERT_NOT_NULL(response->content);
+    response->content[0] = 0;
+    response->content_length = 0;
 
-    struct DataWriterContext_t dw_ctx = {request->response, allocator};
+    struct DataWriterContext_t dw_ctx = {response, allocator};
 
     curl_handle = curl_easy_init();
     ASSERT_NOT_NULL(curl_handle);
@@ -96,6 +105,7 @@ void *http_get(void *req)
 
     allocator->free(allocator->context, (void *)err_msg);
     curl_easy_cleanup(curl_handle);
+    sleep(5); // for demo
 
-    return NULL;
+    return response;
 }
