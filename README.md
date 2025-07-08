@@ -9,10 +9,9 @@ something like Zig instead. ^^
 
 I am adding some features like:
 - basic generic data structures without being able to go out of bounds
-    - array (TODO)
     - linked list
     - dynamic array / vector
-    - trie (TODO)
+    - trie
     - hash map and hash set (TODO)
     - iterators (TODO) -> might also implement some [fluent interface stuff](https://en.wikipedia.org/wiki/Fluent_interface)
 - strings
@@ -23,8 +22,13 @@ I am adding some features like:
     - arena allocator
     - heap allocator
 - some math utilities like an actual modulo function (because C's `%` operator is not a modulo operator but a remainder operator)
-- and probably a lot more when I think of other things I want to add
-- maybe even some simple callbacks
+- futures (only working on POSIX compliant OS due to usage of `pthread.h` altough im looking for a more portable solution)
+
+Right now I enforce some behaviour and assert these. If the assertion failed then the program stops.
+This is okay for now but I will soon return error codes rather than instantly aborting, making error handling
+and debugging easier.. :)
+
+Also I noticed that I need to add a `yoru` prefix everywhere for my public stuff to prevent name clashes so yeah ^^
 
 # Examples
 You can find examples in the [examples](./src/_examples/) folder and run them with `make run-<example_number>`. 
