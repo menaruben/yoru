@@ -6,6 +6,20 @@
 
 // need to compile with -lcurl !!
 
+#define TIMEOUT_SECONDS 5
+
+#define DEMO_SLEEP_SECONDS 3
+
+#define FREE_IF_NOT_NULL(allocator_ptr, ptr)                  \
+    do                                                        \
+    {                                                         \
+        if (ptr)                                              \
+        {                                                     \
+            allocator_ptr->free(allocator_ptr->context, ptr); \
+            ptr = NULL;                                       \
+        }                                                     \
+    } while (0)
+
 struct Get_Response_t
 {
     char *content;
@@ -46,6 +60,14 @@ int main(void)
         printf("[main: %lu] waiting for future to be fulfilled... (%zu s)\n", mainthread, elapsed);
         sleep(1);
         elapsed += 1;
+
+        if (elapsed >= TIMEOUT_SECONDS)
+        {
+            printf("[main: %lu] timeout reached, cancelling future...\n", mainthread);
+            Future_cancel(&future);
+            printf("[main: %lu] future cancelled, exiting...\n", mainthread);
+            goto cleanup;
+        }
     }
 
     struct Get_Response_t *res = (struct Get_Response_t *)Future_await(&future);
@@ -53,14 +75,17 @@ int main(void)
     if (future.ctx->err)
     {
         printf("[main: %lu] there was an error running the future, error: %d\n", mainthread, future.ctx->err);
-        allocator->free(allocator->context, res);
-        return 1;
+        goto cleanup;
     }
 
     printf("%zu bytes received:\n", res->content_length);
     printf("%s\n", res->content);
 
-    allocator->free(allocator->context, res);
+cleanup:
+    printf("[main: %lu] cleaning up...\n", mainthread);
+    FREE_IF_NOT_NULL(allocator, future.thread);
+    FREE_IF_NOT_NULL(allocator, future.ctx);
+
     return 0;
 }
 
@@ -117,7 +142,9 @@ void *http_get(void *req)
     printf("[http_get: %lu] clean up...\n", p);
     allocator->free(allocator->context, (void *)err_msg);
     curl_easy_cleanup(curl_handle);
-    sleep(3); // for demo
+
+    printf("[http_get: %lu] sleeping...\n", p);
+    sleep(DEMO_SLEEP_SECONDS);
 
     return response;
 }
