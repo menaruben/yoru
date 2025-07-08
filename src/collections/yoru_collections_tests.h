@@ -55,9 +55,17 @@ YoruTestResult_t test_vector_basic(void)
 
     if (vec.size != 3)
         return (YoruTestResult_t){false, "Vector size should be 3"};
-    int *item2 = (int *)vec_get_impl(vec.items, 2, vec.size, sizeof(int));
+
+    int *item2 = (int *)vec_get(vec, 2);
     if (!item2 || *item2 != 30)
         return (YoruTestResult_t){false, "Third element should be 30"};
+
+    int new_item = 69;
+    vec_set(vec, 2, new_item);
+    int *retrieved = vec_get(vec, 2);
+
+    if (*retrieved != new_item)
+        return (YoruTestResult_t){false, "Third element should be 69 after set"};
 
     vec_destroy(vec, allocator);
     return (YoruTestResult_t){true, "test_vector_basic passed"};

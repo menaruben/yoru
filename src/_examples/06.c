@@ -40,14 +40,22 @@ int main(void)
     Future_init(&future, &http_get, (void *)&req);
 
     size_t elapsed = 0;
+    pthread_t mainthread = pthread_self();
     while (!future.ctx->ready)
     {
-        printf("Fetching data... (%zu s)\n", elapsed);
+        printf("[main: %lu] waiting for future to be fulfilled... (%zu s)\n", mainthread, elapsed);
         sleep(1);
         elapsed += 1;
     }
 
     struct Get_Response_t *res = (struct Get_Response_t *)Future_await(&future);
+
+    if (future.ctx->err)
+    {
+        printf("[main: %lu] there was an error running the future, error: %d\n", mainthread, future.ctx->err);
+        allocator->free(allocator->context, res);
+        return 1;
+    }
 
     printf("%zu bytes received:\n", res->content_length);
     printf("%s\n", res->content);
@@ -75,14 +83,15 @@ static size_t write_data(void *contents, size_t size, size_t nmemb, void *userp)
 
 void *http_get(void *req)
 {
-    pid_t pid = getpid();
-    printf("http_get running on pid %d\n", pid);
+    pthread_t p = pthread_self();
+    printf("[http_get: %lu] http_get running...\n", p);
 
     struct Get_Request_t *request = (struct Get_Request_t *)req;
     Allocator_t *allocator = request->allocator;
     CURL *curl_handle;
     CURLcode res;
 
+    printf("[http_get: %lu] building request...\n", p);
     struct Get_Response_t *response = allocator->alloc(allocator->context, sizeof(struct Get_Response_t));
 
     response->content = (char *)allocator->alloc(allocator->context, 1);
@@ -95,7 +104,9 @@ void *http_get(void *req)
     curl_handle = curl_easy_init();
     ASSERT_NOT_NULL(curl_handle);
 
+    printf("[http_get: %lu] send get request...\n", p);
     curl_easy_setopt(curl_handle, CURLOPT_URL, request->url);
+
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&dw_ctx);
 
@@ -103,9 +114,10 @@ void *http_get(void *req)
     const char *err_msg = String_to_cstr(String_format("curl_easy_perform() failed: %s\n", curl_easy_strerror(res)), allocator);
     ASSERT(res == CURLE_OK, err_msg);
 
+    printf("[http_get: %lu] clean up...\n", p);
     allocator->free(allocator->context, (void *)err_msg);
     curl_easy_cleanup(curl_handle);
-    sleep(5); // for demo
+    sleep(3); // for demo
 
     return response;
 }

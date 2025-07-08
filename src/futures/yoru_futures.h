@@ -12,6 +12,7 @@ typedef struct FutureThreadContext_t
     void *args;
     void *result;
     bool ready;
+    int err;
 } FutureThreadContext_t;
 
 typedef struct Future_t
@@ -32,14 +33,28 @@ YORU_API void Future_init(Future_t *future, void *(*callback)(void *), void *arg
     ctx->args = args;
     ctx->callback = callback;
     ctx->ready = false;
-
-    pthread_create(thread, NULL, Future_thread_wrapper, (void *)ctx);
-    future->thread = thread;
     future->ctx = ctx;
+
+    ctx->err = pthread_create(thread, NULL, Future_thread_wrapper, (void *)ctx);
+    if (ctx->err != 0)
+    {
+        future->thread = NULL;
+        future->ctx->ready = true;
+        future->ctx->result = NULL;
+    }
+    else
+    {
+        future->thread = thread;
+    }
 }
 
 YORU_API void *Future_await(Future_t *future)
 {
+    if (future->thread == NULL)
+    {
+        return NULL;
+    }
+
     (void)pthread_join(*(future->thread), NULL);
     future->ctx->ready = true;
     return future->ctx->result;
