@@ -14,7 +14,7 @@
 #define EXPECT_MSG(msg_ptr, expected, actual) sprintf(msg_ptr, "Expected: %ld, Actual: %ld\n", (i64)expected, (i64)actual)
 
 #define GENERATE_MODULO_TESTS(TYPE, F)                                            \
-    YoruTestResult_t test_##TYPE##_modulo(void)                                   \
+    Yoru_TestResult_t test_##TYPE##_modulo(void)                                   \
     {                                                                             \
         TYPE expected[NUM_CASES] = {0, 0, 0, 0, 2, 3, 3};                         \
         TYPE results[NUM_CASES] = {                                               \
@@ -32,13 +32,13 @@
                 char *msg = (char *)malloc(100);                                  \
                 if (msg == NULL)                                                  \
                 {                                                                 \
-                    return (YoruTestResult_t){false, "Memory allocation failed"}; \
+                    return (Yoru_TestResult_t){false, "Memory allocation failed"}; \
                 }                                                                 \
                 EXPECT_MSG(msg, expected[i], results[i]);                         \
-                return (YoruTestResult_t){false, msg};                            \
+                return (Yoru_TestResult_t){false, msg};                            \
             }                                                                     \
         }                                                                         \
-        return (YoruTestResult_t){true, "All tests passed"};                      \
+        return (Yoru_TestResult_t){true, "All tests passed"};                      \
     }
 
 GENERATE_MODULO_TESTS(i8, i8_modulo)
@@ -49,7 +49,7 @@ GENERATE_MODULO_TESTS(i64, i64_modulo)
 #define NUM_UNSIGNED_CASES 5
 #define EXPECT_MSG_UNSIGNED(msg_ptr, expected, actual) sprintf(msg_ptr, "Expected: %lu, Actual: %lu\n", (u64)expected, (u64)actual)
 #define GENERATE_UNSIGNED_MODULO_TESTS(TYPE, F)                                   \
-    YoruTestResult_t test_##TYPE##_modulo(void)                                   \
+    Yoru_TestResult_t test_##TYPE##_modulo(void)                                   \
     {                                                                             \
         TYPE expected[NUM_UNSIGNED_CASES] = {0, 0, 0, 3, 3};                      \
         TYPE results[NUM_UNSIGNED_CASES] = {                                      \
@@ -65,13 +65,13 @@ GENERATE_MODULO_TESTS(i64, i64_modulo)
                 char *msg = (char *)malloc(100);                                  \
                 if (msg == NULL)                                                  \
                 {                                                                 \
-                    return (YoruTestResult_t){false, "Memory allocation failed"}; \
+                    return (Yoru_TestResult_t){false, "Memory allocation failed"}; \
                 }                                                                 \
                 EXPECT_MSG_UNSIGNED(msg, expected[i], results[i]);                \
-                return (YoruTestResult_t){false, msg};                            \
+                return (Yoru_TestResult_t){false, msg};                            \
             }                                                                     \
         }                                                                         \
-        return (YoruTestResult_t){true, "All tests passed"};                      \
+        return (Yoru_TestResult_t){true, "All tests passed"};                      \
     }
 
 GENERATE_UNSIGNED_MODULO_TESTS(u8, u8_modulo)

@@ -8,7 +8,7 @@
 #include "../allocators/yoru_allocators_tests.h"
 #include "../collections/yoru_collections_tests.h"
 
-static YoruTestFunc_t test_funcs[] = {
+static Yoru_TestFunc_t test_funcs[] = {
     // Math tests
     {.name = "test_i8_modulo", .test_func = test_i8_modulo},
     {.name = "test_i16_modulo", .test_func = test_i16_modulo},
@@ -47,5 +47,5 @@ int main(void)
         .test_count = test_count,
     };
 
-    return YoruTest_run(&suite);
+    return Yoru_Test_run(&suite);
 }

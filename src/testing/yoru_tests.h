@@ -5,31 +5,31 @@ typedef struct
 {
     bool success;
     const char *message;
-} YoruTestResult_t;
+} Yoru_TestResult_t;
 
 typedef struct
 {
     const char *name;
-    YoruTestResult_t (*test_func)(void);
-} YoruTestFunc_t;
+    Yoru_TestResult_t (*test_func)(void);
+} Yoru_TestFunc_t;
 
 typedef struct
 {
-    YoruTestFunc_t *tests;
+    Yoru_TestFunc_t *tests;
     size_t test_count;
     size_t passed;
     size_t failed;
 } YoruTestSuite_t;
 
-u8 YoruTest_run(YoruTestSuite_t *suite)
+u8 Yoru_Test_run(YoruTestSuite_t *suite)
 {
     suite->passed = 0;
     suite->failed = 0;
 
     for (size_t i = 0; i < suite->test_count; i++)
     {
-        YoruTestFunc_t *test = &suite->tests[i];
-        YoruTestResult_t result = test->test_func();
+        Yoru_TestFunc_t *test = &suite->tests[i];
+        Yoru_TestResult_t result = test->test_func();
         if (result.success)
         {
             suite->passed++;

@@ -2,12 +2,12 @@
 #include "../collections/yoru_collections.h"
 
 // List Tests
-YoruTestResult_t test_list_basic(void)
+Yoru_TestResult_t test_list_basic(void)
 {
     // Setup allocator
     Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     if (!allocator)
-        return (YoruTestResult_t){false, "Failed to create allocator"};
+        return (Yoru_TestResult_t){false, "Failed to create allocator"};
 
     // Create list of ints
     List_t(int) list = yoru_list_new(int, allocator);
@@ -18,33 +18,33 @@ YoruTestResult_t test_list_basic(void)
     yoru_list_prepend(allocator, list, &c);
 
     if (list.size != 3)
-        return (YoruTestResult_t){false, "List size should be 3"};
+        return (Yoru_TestResult_t){false, "List size should be 3"};
 
     int *val0 = yoru_list_get(list, 0);
     int *val1 = yoru_list_get(list, 1);
     int *val2 = yoru_list_get(list, 2);
 
     if (!val0 || *val0 != 99)
-        return (YoruTestResult_t){false, "First element should be 99"};
+        return (Yoru_TestResult_t){false, "First element should be 99"};
     if (!val1 || *val1 != 42)
-        return (YoruTestResult_t){false, "Second element should be 42"};
+        return (Yoru_TestResult_t){false, "Second element should be 42"};
     if (!val2 || *val2 != 7)
-        return (YoruTestResult_t){false, "Third element should be 7"};
+        return (Yoru_TestResult_t){false, "Third element should be 7"};
 
     yoru_list_remove(allocator, list, 1);
     if (list.size != 2)
-        return (YoruTestResult_t){false, "List size should be 2 after remove"};
+        return (Yoru_TestResult_t){false, "List size should be 2 after remove"};
 
     yoru_list_destroy(list, allocator);
-    return (YoruTestResult_t){true, "test_list_basic passed"};
+    return (Yoru_TestResult_t){true, "test_list_basic passed"};
 }
 
 // Vector Tests
-YoruTestResult_t test_vector_basic(void)
+Yoru_TestResult_t test_vector_basic(void)
 {
     Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     if (!allocator)
-        return (YoruTestResult_t){false, "Failed to create allocator"};
+        return (Yoru_TestResult_t){false, "Failed to create allocator"};
 
     Vec_t(int) vec = vec_new(int, allocator);
 
@@ -54,33 +54,33 @@ YoruTestResult_t test_vector_basic(void)
     vec_append(vec, c, allocator);
 
     if (vec.size != 3)
-        return (YoruTestResult_t){false, "Vector size should be 3"};
+        return (Yoru_TestResult_t){false, "Vector size should be 3"};
 
     int *item2 = (int *)vec_get(vec, 2);
     if (!item2 || *item2 != 30)
-        return (YoruTestResult_t){false, "Third element should be 30"};
+        return (Yoru_TestResult_t){false, "Third element should be 30"};
 
     int new_item = 69;
     vec_set(vec, 2, new_item);
     int *retrieved = vec_get(vec, 2);
 
     if (*retrieved != new_item)
-        return (YoruTestResult_t){false, "Third element should be 69 after set"};
+        return (Yoru_TestResult_t){false, "Third element should be 69 after set"};
 
     vec_destroy(vec, allocator);
-    return (YoruTestResult_t){true, "test_vector_basic passed"};
+    return (Yoru_TestResult_t){true, "test_vector_basic passed"};
 }
 
 // Trie Tests
-YoruTestResult_t test_trie_basic(void)
+Yoru_TestResult_t test_trie_basic(void)
 {
     Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     if (!allocator)
-        return (YoruTestResult_t){false, "Failed to create allocator"};
+        return (Yoru_TestResult_t){false, "Failed to create allocator"};
 
     TrieNode_t *trie = trie_new(allocator);
     if (!trie)
-        return (YoruTestResult_t){false, "Failed to create trie"};
+        return (Yoru_TestResult_t){false, "Failed to create trie"};
 
     struct
     {
@@ -114,11 +114,11 @@ YoruTestResult_t test_trie_basic(void)
     } *retrieved = trie_get(trie, person.pid);
 
     if (!retrieved)
-        return (YoruTestResult_t){false, "Failed to retrieve person from trie"};
+        return (Yoru_TestResult_t){false, "Failed to retrieve person from trie"};
 
     if (memcmp(retrieved, &person, sizeof(person)))
-        return (YoruTestResult_t){false, "Retrieved person does not match original"};
+        return (Yoru_TestResult_t){false, "Retrieved person does not match original"};
 
     trie_destroy(trie, allocator);
-    return (YoruTestResult_t){true, "test_trie_basic passed"};
+    return (Yoru_TestResult_t){true, "test_trie_basic passed"};
 }
