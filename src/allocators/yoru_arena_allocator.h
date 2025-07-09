@@ -11,17 +11,17 @@ typedef struct
   void *memory;
   size_t capacity;
   size_t next_offset;
-} ArenaAllocator_t;
+} Yoru_ArenaAllocator_t;
 
 YORU_API Yoru_Allocator_t *Yoru_ArenaAllocator_new(size_t capacity);
 
-YORU_PRIVATE void *arena_alloc(void *context, size_t size);
-YORU_PRIVATE void *arena_realloc(void *ptr, size_t size);
-YORU_PRIVATE void arena_free(void *context, void *ptr);
+YORU_PRIVATE void *yoru_arena_alloc(void *context, size_t size);
+YORU_PRIVATE void *yoru_arena_realloc(void *ptr, size_t size);
+YORU_PRIVATE void yoru_arena_free(void *context, void *ptr);
 
-YORU_PRIVATE ArenaAllocator_t *ArenaAllocator_Init(size_t capacity);
-YORU_PRIVATE void *ArenaAllocator_Alloc(ArenaAllocator_t *arena, const size_t size);
-YORU_PRIVATE void ArenaAllocator_Free(ArenaAllocator_t *arena);
+YORU_PRIVATE Yoru_ArenaAllocator_t *Yoru_ArenaAllocator_Init(size_t capacity);
+YORU_PRIVATE void *ArenaAllocator_Alloc(Yoru_ArenaAllocator_t *arena, const size_t size);
+YORU_PRIVATE void ArenaAllocator_Free(Yoru_ArenaAllocator_t *arena);
 
 /**
  * @brief Creates a new Arena Allocator with the specified capacity.
@@ -35,7 +35,7 @@ YORU_PRIVATE void ArenaAllocator_Free(ArenaAllocator_t *arena);
  */
 YORU_API Yoru_Allocator_t *Yoru_ArenaAllocator_new(size_t capacity)
 {
-  ArenaAllocator_t *arena = ArenaAllocator_Init(capacity);
+  Yoru_ArenaAllocator_t *arena = Yoru_ArenaAllocator_Init(capacity);
   if (arena == NULL)
     return NULL;
 
@@ -44,20 +44,20 @@ YORU_API Yoru_Allocator_t *Yoru_ArenaAllocator_new(size_t capacity)
     return NULL;
 
   allocator->context = (void *)arena;
-  allocator->alloc = arena_alloc;
-  allocator->realloc = arena_realloc;
-  allocator->free = arena_free;
+  allocator->alloc = yoru_arena_alloc;
+  allocator->realloc = yoru_arena_realloc;
+  allocator->free = yoru_arena_free;
   return allocator;
 }
 
 // Wrappers around the ArenaAllocator functions to fit the Yoru_Allocator_t interface
-YORU_PRIVATE void *arena_alloc(void *context, size_t size)
+YORU_PRIVATE void *yoru_arena_alloc(void *context, size_t size)
 {
-  ArenaAllocator_t *arena = (ArenaAllocator_t *)context;
+  Yoru_ArenaAllocator_t *arena = (Yoru_ArenaAllocator_t *)context;
   return ArenaAllocator_Alloc(arena, size);
 }
 
-YORU_PRIVATE void *arena_realloc(void *ptr, size_t size)
+YORU_PRIVATE void *yoru_arena_realloc(void *ptr, size_t size)
 {
   (void)ptr;
   (void)size;
@@ -67,20 +67,20 @@ YORU_PRIVATE void *arena_realloc(void *ptr, size_t size)
   return NULL;
 }
 
-YORU_PRIVATE void arena_free(void *context, void *ptr)
+YORU_PRIVATE void yoru_arena_free(void *context, void *ptr)
 {
   (void)ptr;
   YORU_ASSERT_NOT_NULL(context);
-  ArenaAllocator_t *arena = (ArenaAllocator_t *)context;
+  Yoru_ArenaAllocator_t *arena = (Yoru_ArenaAllocator_t *)context;
   ArenaAllocator_Free(arena);
 }
 
 // Implementation of the ArenaAllocator functions
 
-YORU_PRIVATE ArenaAllocator_t *ArenaAllocator_Init(size_t capacity)
+YORU_PRIVATE Yoru_ArenaAllocator_t *Yoru_ArenaAllocator_Init(size_t capacity)
 {
-  ArenaAllocator_t *arena =
-      (ArenaAllocator_t *)malloc(sizeof(ArenaAllocator_t));
+  Yoru_ArenaAllocator_t *arena =
+      (Yoru_ArenaAllocator_t *)malloc(sizeof(Yoru_ArenaAllocator_t));
   if (arena == NULL)
   {
     return NULL;
@@ -99,7 +99,7 @@ YORU_PRIVATE ArenaAllocator_t *ArenaAllocator_Init(size_t capacity)
   return arena;
 }
 
-YORU_PRIVATE void *ArenaAllocator_Alloc(ArenaAllocator_t *arena, const size_t size)
+YORU_PRIVATE void *ArenaAllocator_Alloc(Yoru_ArenaAllocator_t *arena, const size_t size)
 {
   if (arena->memory == NULL || arena->next_offset + size > arena->capacity ||
       arena->capacity == 0)
@@ -112,7 +112,7 @@ YORU_PRIVATE void *ArenaAllocator_Alloc(ArenaAllocator_t *arena, const size_t si
   return ptr;
 }
 
-YORU_PRIVATE void ArenaAllocator_Free(ArenaAllocator_t *arena)
+YORU_PRIVATE void ArenaAllocator_Free(Yoru_ArenaAllocator_t *arena)
 {
   if (arena == NULL || arena->memory == NULL)
   {

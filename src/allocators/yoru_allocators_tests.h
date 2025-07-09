@@ -9,7 +9,7 @@ YoruTestResult_t test_arena_allocator(void)
     size_t arena_size = 128;
     Yoru_Allocator_t *allocator = Yoru_ArenaAllocator_new(arena_size);
     if (!allocator)
-        return (YoruTestResult_t){false, "ArenaAllocator_Init returned NULL"};
+        return (YoruTestResult_t){false, "Yoru_ArenaAllocator_Init returned NULL"};
 
     void *ptr1 = allocator->alloc(allocator->context, 32);
     if (!ptr1)
