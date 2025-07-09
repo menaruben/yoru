@@ -111,7 +111,7 @@ YoruTestResult_t test_string_format(void)
 
 YoruTestResult_t test_string_to_cstr(void)
 {
-    Yoru_Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     if (allocator == NULL)
     {
         return (YoruTestResult_t){false, "Allocator creation failed"};

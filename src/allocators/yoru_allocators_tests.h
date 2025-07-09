@@ -40,9 +40,9 @@ YoruTestResult_t test_arena_allocator(void)
 
 YoruTestResult_t test_heap_allocator(void)
 {
-    Yoru_Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     if (!allocator)
-        return (YoruTestResult_t){false, "HeapAllocator_new returned NULL"};
+        return (YoruTestResult_t){false, "Yoru_HeapAllocator_new returned NULL"};
 
     void *ptr = allocator->alloc(allocator->context, 64);
     if (!ptr)

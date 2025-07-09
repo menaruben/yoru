@@ -23,7 +23,7 @@
 
 int main(void)
 {
-    Yoru_Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     YORU_ASSERT_NOT_NULL(allocator);
 
     // allocate an array on heap

@@ -4,7 +4,7 @@
 
 int main(void)
 {
-    Yoru_Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     YORU_ASSERT_NOT_NULL(allocator);
 
     List_t(i32) list = list_new(i32, allocator);

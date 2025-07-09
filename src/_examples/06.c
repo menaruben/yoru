@@ -33,7 +33,7 @@ void *http_get(void *request);
 
 int main(void)
 {
-    Yoru_Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     YORU_ASSERT_NOT_NULL(allocator);
 
     struct Get_Request_t req =
