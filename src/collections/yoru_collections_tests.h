@@ -10,19 +10,19 @@ YoruTestResult_t test_list_basic(void)
         return (YoruTestResult_t){false, "Failed to create allocator"};
 
     // Create list of ints
-    List_t(int) list = list_new(int, allocator);
+    List_t(int) list = yoru_list_new(int, allocator);
 
     int a = 42, b = 7, c = 99;
-    list_append(allocator, list, &a);
-    list_append(allocator, list, &b);
-    list_prepend(allocator, list, &c);
+    yoru_list_append(allocator, list, &a);
+    yoru_list_append(allocator, list, &b);
+    yoru_list_prepend(allocator, list, &c);
 
     if (list.size != 3)
         return (YoruTestResult_t){false, "List size should be 3"};
 
-    int *val0 = list_get(list, 0);
-    int *val1 = list_get(list, 1);
-    int *val2 = list_get(list, 2);
+    int *val0 = yoru_list_get(list, 0);
+    int *val1 = yoru_list_get(list, 1);
+    int *val2 = yoru_list_get(list, 2);
 
     if (!val0 || *val0 != 99)
         return (YoruTestResult_t){false, "First element should be 99"};
@@ -31,11 +31,11 @@ YoruTestResult_t test_list_basic(void)
     if (!val2 || *val2 != 7)
         return (YoruTestResult_t){false, "Third element should be 7"};
 
-    list_remove(allocator, list, 1);
+    yoru_list_remove(allocator, list, 1);
     if (list.size != 2)
         return (YoruTestResult_t){false, "List size should be 2 after remove"};
 
-    list_destroy(list, allocator);
+    yoru_list_destroy(list, allocator);
     return (YoruTestResult_t){true, "test_list_basic passed"};
 }
 
