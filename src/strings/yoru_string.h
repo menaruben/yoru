@@ -23,6 +23,7 @@ YORU_API Yoru_String_t Yoru_String_at(const Yoru_String_t s, size_t index);
 YORU_API bool Yoru_String_equals(const Yoru_String_t *a, const Yoru_String_t *b);
 YORU_API bool Yoru_String_equals_linear(const Yoru_String_t *a, const Yoru_String_t *b);
 
+#ifdef YORU_IMPLEMENTATION
 YORU_API Yoru_String_t Yoru_String_new(const char *cstr)
 {
     size_t len = 0;
@@ -139,5 +140,6 @@ YORU_API bool Yoru_String_equals_linear(const Yoru_String_t *a, const Yoru_Strin
 
     return result == 0;
 }
+#endif // YORU_IMPLEMENTATION
 
 #endif

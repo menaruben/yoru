@@ -59,6 +59,7 @@ YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNod
 #define yoru_list_remove(allocator_ptr, list_ptr, index) \
     yoru_list_remove_impl(allocator_ptr, (list_ptr).head, index, &(list_ptr).size)
 
+#ifdef YORU_IMPLEMENTATION
 YORU_HELPER void *yoru_listnode_new_impl(Yoru_Allocator_t *allocator)
 {
     YORU_ASSERT_NOT_NULL(allocator);
@@ -164,5 +165,6 @@ YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNod
     node = NULL; // avoid dangling pointer
     (*list_size)--;
 }
+#endif // YORU_IMPLEMENTATION
 
 #endif

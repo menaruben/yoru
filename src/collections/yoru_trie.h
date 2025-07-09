@@ -49,6 +49,7 @@ YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size
 #define trie_destroy(node_ptr, allocator_ptr) \
     (void)trie_destroy_impl(allocator_ptr, (void *)(node_ptr), sizeof(*(node_ptr)))
 
+#ifdef YORU_IMPLEMENTATION
 YORU_HELPER void *trie_node_create_impl(Yoru_Allocator_t *allocator, size_t node_size, u8 key)
 {
     YORU_ASSERT_NOT_NULL(allocator);
@@ -126,5 +127,6 @@ YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size
     }
     allocator->free(allocator->context, node);
 }
+#endif // YORU_IMPLEMENTATION
 
 #endif

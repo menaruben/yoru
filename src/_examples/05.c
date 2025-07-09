@@ -1,3 +1,4 @@
+#define YORU_IMPLEMENTATION
 #include "../yoru.h"
 #include <stdio.h>
 

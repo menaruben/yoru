@@ -49,6 +49,7 @@ YORU_HELPER void *vec_grow_items(Yoru_Allocator_t *allocator, void **items, size
 #define vec_set(vec, index, item) \
     vec_set_impl((void *)vec.items, index, &(item), sizeof(*(vec).items), vec.size)
 
+#ifdef YORU_IMPLEMENTATION
 YORU_HELPER void *vec_alloc_items(Yoru_Allocator_t *allocator, size_t item_size)
 {
     YORU_ASSERT_NOT_NULL(allocator);
@@ -123,5 +124,6 @@ YORU_HELPER void *vec_grow_items(Yoru_Allocator_t *allocator, void **items, size
     *items = new_items;
     return new_items;
 }
+#endif // YORU_IMPLEMENTATION
 
 #endif

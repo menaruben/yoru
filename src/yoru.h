@@ -1,6 +1,8 @@
 #ifndef __YORU_H__
 #define __YORU_H__
 
+// use YORU_IMPLEMENTATION to include the implementation of the library
+
 #include "./inttypes/yoru_inttypes.h"
 #include "./collections/yoru_collections.h"
 #include "./allocators/yoru_allocators.h"
@@ -11,10 +13,9 @@
 #include "./testing/yoru_tests.h"
 #include "./futures/yoru_futures.h"
 
+// some yoru features are only available in strict mode
 #ifdef YORU_STRICT
-
 #define YORU_EXIT_ON_ARENA_REALLOC
-
 #endif
 
 #endif

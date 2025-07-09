@@ -23,6 +23,7 @@
         }                               \
     } while (0);
 
+#ifdef YORU_IMPLEMENTATION
 YORU_HELPER i8 i8_modulo(i8 a, i8 b)
 {
     modulo(a, b);
@@ -76,5 +77,6 @@ YORU_HELPER usize usize_modulo(usize a, usize b)
     modulo(a, b);
     return a;
 }
+#endif // YORU_IMPLEMENTATION
 
 #endif
