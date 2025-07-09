@@ -13,7 +13,7 @@ typedef struct
   size_t next_offset;
 } ArenaAllocator_t;
 
-YORU_API Allocator_t *ArenaAllocator_new(size_t capacity);
+YORU_API Yoru_Allocator_t *Yoru_ArenaAllocator_new(size_t capacity);
 
 YORU_PRIVATE void *arena_alloc(void *context, size_t size);
 YORU_PRIVATE void *arena_realloc(void *ptr, size_t size);
@@ -31,15 +31,15 @@ YORU_PRIVATE void ArenaAllocator_Free(ArenaAllocator_t *arena);
  * but can reset or free the entire arena at once.
  *
  * @param capacity The total size in bytes to allocate for the arena.
- * @return Pointer to the newly created Allocator_t instance, or NULL on failure.
+ * @return Pointer to the newly created Yoru_Allocator_t instance, or NULL on failure.
  */
-YORU_API Allocator_t *ArenaAllocator_new(size_t capacity)
+YORU_API Yoru_Allocator_t *Yoru_ArenaAllocator_new(size_t capacity)
 {
   ArenaAllocator_t *arena = ArenaAllocator_Init(capacity);
   if (arena == NULL)
     return NULL;
 
-  Allocator_t *allocator = (Allocator_t *)malloc(sizeof(Allocator_t));
+  Yoru_Allocator_t *allocator = (Yoru_Allocator_t *)malloc(sizeof(Yoru_Allocator_t));
   if (allocator == NULL)
     return NULL;
 
@@ -50,7 +50,7 @@ YORU_API Allocator_t *ArenaAllocator_new(size_t capacity)
   return allocator;
 }
 
-// Wrappers around the ArenaAllocator functions to fit the Allocator_t interface
+// Wrappers around the ArenaAllocator functions to fit the Yoru_Allocator_t interface
 YORU_PRIVATE void *arena_alloc(void *context, size_t size)
 {
   ArenaAllocator_t *arena = (ArenaAllocator_t *)context;
@@ -62,7 +62,7 @@ YORU_PRIVATE void *arena_realloc(void *ptr, size_t size)
   (void)ptr;
   (void)size;
 #ifdef YORU_DEBUG
-  ERROR("Realloc is not supported in ArenaAllocator");
+  YORU_ERROR("Realloc is not supported in ArenaAllocator");
 #endif
   return NULL;
 }
@@ -70,7 +70,7 @@ YORU_PRIVATE void *arena_realloc(void *ptr, size_t size)
 YORU_PRIVATE void arena_free(void *context, void *ptr)
 {
   (void)ptr;
-  ASSERT_NOT_NULL(context);
+  YORU_ASSERT_NOT_NULL(context);
   ArenaAllocator_t *arena = (ArenaAllocator_t *)context;
   ArenaAllocator_Free(arena);
 }

@@ -16,7 +16,7 @@ typedef struct
 } String_t;
 
 YORU_API String_t String_new(const char *cstr);
-YORU_API const char *String_to_cstr(const String_t s, Allocator_t *allocator);
+YORU_API const char *String_to_cstr(const String_t s, Yoru_Allocator_t *allocator);
 YORU_API String_t String_format(const char *format, ...);
 YORU_API String_t String_substring(const String_t s, size_t start, size_t end);
 YORU_API String_t String_at(const String_t s, size_t index);
@@ -34,7 +34,7 @@ YORU_API String_t String_new(const char *cstr)
     return (String_t){(const u8 *)cstr, len};
 }
 
-YORU_API const char *String_to_cstr(const String_t s, Allocator_t *allocator)
+YORU_API const char *String_to_cstr(const String_t s, Yoru_Allocator_t *allocator)
 {
     if (s.str == NULL || s.length == 0)
     {

@@ -6,7 +6,7 @@
 #include "yoru_allocator_type.h"
 #include "../yoru_defs.h"
 
-YORU_API Allocator_t *HeapAllocator_new(void);
+YORU_API Yoru_Allocator_t *HeapAllocator_new(void);
 
 YORU_PRIVATE void *heap_alloc(void *context, size_t size);
 YORU_PRIVATE void *heap_realloc(void *ptr, size_t size);
@@ -15,15 +15,15 @@ YORU_PRIVATE void heap_free(void *context, void *ptr);
 /**
  * @brief Creates and initializes a new heap allocator instance.
  *
- * This function allocates and returns a pointer to a new Allocator_t object
+ * This function allocates and returns a pointer to a new Yoru_Allocator_t object
  * that manages memory using the heap. The returned allocator can be used
  * for dynamic memory allocation and deallocation.
  *
- * @return Pointer to a newly created Allocator_t instance, or NULL on failure.
+ * @return Pointer to a newly created Yoru_Allocator_t instance, or NULL on failure.
  */
-YORU_API Allocator_t *HeapAllocator_new(void)
+YORU_API Yoru_Allocator_t *HeapAllocator_new(void)
 {
-    Allocator_t *allocator = (Allocator_t *)malloc(sizeof(Allocator_t));
+    Yoru_Allocator_t *allocator = (Yoru_Allocator_t *)malloc(sizeof(Yoru_Allocator_t));
     if (allocator == NULL)
         return NULL;
 
@@ -48,7 +48,7 @@ YORU_PRIVATE void *heap_realloc(void *ptr, size_t size)
 YORU_PRIVATE void heap_free(void *context, void *ptr)
 {
     (void)context;
-    ASSERT_NOT_NULL(ptr);
+    YORU_ASSERT_NOT_NULL(ptr);
     free(ptr);
 }
 

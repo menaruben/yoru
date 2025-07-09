@@ -7,7 +7,7 @@
 YoruTestResult_t test_arena_allocator(void)
 {
     size_t arena_size = 128;
-    Allocator_t *allocator = ArenaAllocator_new(arena_size);
+    Yoru_Allocator_t *allocator = Yoru_ArenaAllocator_new(arena_size);
     if (!allocator)
         return (YoruTestResult_t){false, "ArenaAllocator_Init returned NULL"};
 
@@ -40,7 +40,7 @@ YoruTestResult_t test_arena_allocator(void)
 
 YoruTestResult_t test_heap_allocator(void)
 {
-    Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = HeapAllocator_new();
     if (!allocator)
         return (YoruTestResult_t){false, "HeapAllocator_new returned NULL"};
 

@@ -5,7 +5,7 @@
 YoruTestResult_t test_list_basic(void)
 {
     // Setup allocator
-    Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = HeapAllocator_new();
     if (!allocator)
         return (YoruTestResult_t){false, "Failed to create allocator"};
 
@@ -42,7 +42,7 @@ YoruTestResult_t test_list_basic(void)
 // Vector Tests
 YoruTestResult_t test_vector_basic(void)
 {
-    Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = HeapAllocator_new();
     if (!allocator)
         return (YoruTestResult_t){false, "Failed to create allocator"};
 
@@ -74,7 +74,7 @@ YoruTestResult_t test_vector_basic(void)
 // Trie Tests
 YoruTestResult_t test_trie_basic(void)
 {
-    Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = HeapAllocator_new();
     if (!allocator)
         return (YoruTestResult_t){false, "Failed to create allocator"};
 

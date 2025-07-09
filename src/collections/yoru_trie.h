@@ -25,11 +25,11 @@ typedef struct TrieNode_t
     void *value;
 } TrieNode_t;
 
-YORU_HELPER void *trie_node_create_impl(Allocator_t *allocator, size_t node_size, u8 key);
-YORU_HELPER void trie_put_impl(void *root, const u8 *key, void *value, size_t node_size, Allocator_t *allocator);
+YORU_HELPER void *trie_node_create_impl(Yoru_Allocator_t *allocator, size_t node_size, u8 key);
+YORU_HELPER void trie_put_impl(void *root, const u8 *key, void *value, size_t node_size, Yoru_Allocator_t *allocator);
 YORU_HELPER void *trie_get_impl(void *root, const u8 *key);
 YORU_HELPER void trie_remove_impl(void *root, const u8 *key);
-YORU_HELPER void trie_destroy_impl(Allocator_t *allocator, void *node, size_t node_size);
+YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size_t node_size);
 
 #define trie_new(allocator_ptr) \
     (TrieNode_t *)trie_node_create_impl(allocator_ptr, sizeof(TrieNode_t), 0);
@@ -49,9 +49,9 @@ YORU_HELPER void trie_destroy_impl(Allocator_t *allocator, void *node, size_t no
 #define trie_destroy(node_ptr, allocator_ptr) \
     (void)trie_destroy_impl(allocator_ptr, (void *)(node_ptr), sizeof(*(node_ptr)))
 
-YORU_HELPER void *trie_node_create_impl(Allocator_t *allocator, size_t node_size, u8 key)
+YORU_HELPER void *trie_node_create_impl(Yoru_Allocator_t *allocator, size_t node_size, u8 key)
 {
-    ASSERT_NOT_NULL(allocator);
+    YORU_ASSERT_NOT_NULL(allocator);
     TrieNode_t *node = (TrieNode_t *)allocator->alloc(allocator->context, node_size);
     node->key = key;
     for (int i = 0; i < 256; ++i)
@@ -66,11 +66,11 @@ YORU_HELPER void trie_put_impl(
     const u8 *key,
     void *value,
     size_t node_size,
-    Allocator_t *allocator)
+    Yoru_Allocator_t *allocator)
 {
-    ASSERT_NOT_NULL(allocator);
-    ASSERT_NOT_NULL(root);
-    ASSERT_NOT_NULL(key);
+    YORU_ASSERT_NOT_NULL(allocator);
+    YORU_ASSERT_NOT_NULL(root);
+    YORU_ASSERT_NOT_NULL(key);
 
     TrieNode_t *node = (TrieNode_t *)root;
     for (size_t i = 0; key[i]; ++i)
@@ -98,8 +98,8 @@ YORU_HELPER void *trie_get_impl(void *root, const u8 *key)
 
 YORU_HELPER void trie_remove_impl(void *root, const u8 *key)
 {
-    ASSERT_NOT_NULL(root);
-    ASSERT_NOT_NULL(key);
+    YORU_ASSERT_NOT_NULL(root);
+    YORU_ASSERT_NOT_NULL(key);
     TrieNode_t *node = (TrieNode_t *)root;
     for (size_t i = 0; key[i]; ++i)
     {
@@ -112,10 +112,10 @@ YORU_HELPER void trie_remove_impl(void *root, const u8 *key)
     node->value = NULL;
 }
 
-YORU_HELPER void trie_destroy_impl(Allocator_t *allocator, void *node, size_t node_size)
+YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size_t node_size)
 {
-    ASSERT_NOT_NULL(allocator);
-    ASSERT_NOT_NULL(node);
+    YORU_ASSERT_NOT_NULL(allocator);
+    YORU_ASSERT_NOT_NULL(node);
     TrieNode_t *n = (TrieNode_t *)node;
 
     // Free all children nodes recursively

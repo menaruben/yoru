@@ -8,8 +8,8 @@ typedef struct
 
 int main(void)
 {
-    Allocator_t *allocator = HeapAllocator_new();
-    ASSERT_NOT_NULL(allocator);
+    Yoru_Allocator_t *allocator = HeapAllocator_new();
+    YORU_ASSERT_NOT_NULL(allocator);
 
     // A Trie can store any type of data, it is not fixed to a specific type.
     TrieNode_t *trie = trie_new(allocator);
@@ -24,17 +24,17 @@ int main(void)
 
     // Retrieve and print int (auto casts to lhs type)
     i32 *retrieved_int = trie_get(trie, "int_key");
-    ASSERT_NOT_NULL(retrieved_int);
+    YORU_ASSERT_NOT_NULL(retrieved_int);
     printf("Retrieved int: %d\n", *retrieved_int);
 
     // get and explicit cast to specific type
     u8 *retrieved_int_as_u8 = trie_get_as(u8, trie, "int_key");
-    ASSERT_NOT_NULL(retrieved_int_as_u8);
+    YORU_ASSERT_NOT_NULL(retrieved_int_as_u8);
     printf("Retrieved int as u8: %c\n", *retrieved_int_as_u8);
 
     // Retrieve and print Point
     Point *retrieved_pt = trie_get(trie, "point_key");
-    ASSERT_NOT_NULL(retrieved_pt);
+    YORU_ASSERT_NOT_NULL(retrieved_pt);
     printf("Retrieved point: (%d, %d)\n", retrieved_pt->x, retrieved_pt->y);
 
     trie_destroy(trie, allocator);

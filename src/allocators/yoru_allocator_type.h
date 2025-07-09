@@ -15,12 +15,12 @@
  * * The `context` field can be used to store any additional data needed by the allocator,
  *   such as a pointer to an arena or other allocator-specific state.
  */
-typedef struct Allocator_t
+typedef struct Yoru_Allocator_t
 {
   FUNC(void *, alloc, void *, size_t);
   FUNC(void, free, void *, void *);
   FUNC(void *, realloc, void *, size_t);
   void *context;
-} Allocator_t;
+} Yoru_Allocator_t;
 
 #endif

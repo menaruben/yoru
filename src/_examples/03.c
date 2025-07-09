@@ -12,7 +12,7 @@ int main(void)
     // using heap allocator because arena does not support reallocation
     // and we need to reallocate the vector when it grows!!
     // the library will raise an error if you try to use arena allocator and try to reallocate
-    Allocator_t *allocator = HeapAllocator_new();
+    Yoru_Allocator_t *allocator = HeapAllocator_new();
     Vec_t(Data_t) vec = vec_new(Data_t, allocator);
 
     for (i32 i = 0; i < VECTOR_SIZE; i++)
