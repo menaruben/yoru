@@ -23,12 +23,14 @@ I am adding some features like:
     - heap allocator
 - some math utilities like an actual modulo function (because C's `%` operator is not a modulo operator but a remainder operator)
 - futures (only working on POSIX compliant OS due to usage of `pthread.h` altough im looking for a more portable solution)
+- results and errors (need to be properly integrated with the rest of the library)
+- generators sound really cool and interesting! I will probably implement them once I am working on the iterators since they are quite similar. (TODO)
 
 Right now I enforce some behaviour and assert these. If the assertion failed then the program stops.
 This is okay for now but I will soon return error codes rather than instantly aborting, making error handling
-and debugging easier.. :)
+and debugging easier.. :) Or I will make new functions (that end with `try` or something like that) that return a result or error code instead of asserting. I am not sure yet. 
 
-Also I noticed that I need to add a `yoru` prefix everywhere for my public stuff to prevent name clashes so yeah ^^
+Tests need to be written and improved. 
 
 # Examples
 You can find examples in the [examples](./src/_examples/) folder and run them with `make run-<example_number>`. 
