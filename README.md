@@ -32,8 +32,10 @@ and debugging easier.. :) Or I will make new functions (that end with `try` or s
 
 Tests need to be written and improved. 
 
-# Examples
-You can find examples in the [examples](./src/_examples/) folder and run them with `make run-<example_number>`. 
+# Tests and Examples
+You can run the [tests](./src/testing/yoru_tests.c) with `./yoru.sh test` or `./yoru.sh tests`.
+
+[Examples](./src/_examples/) can be run with `./yoru.sh demo <demo-number>`. 
 
 # Installation
 You can just copy the content of the `src` folder into your project and include the header file [yoru.h](./src/yoru.h) in your project.
