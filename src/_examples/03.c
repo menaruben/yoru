@@ -23,7 +23,7 @@ int main(void)
 
     for (i32 i = 0; i < VECTOR_SIZE; i++)
     {
-        Data_t *data = vec_get(vec, i);
+        Data_t *data = vec_get(Data_t *, vec, i);
         printf("Data at index %d: %d\n", i, data->data);
     }
 
@@ -33,7 +33,7 @@ int main(void)
     // set value at index 13, if the index is out of bounds, the vector DOES NOT resize
     Data_t new_data = {.data = 100};
     vec_set(vec, 13, new_data);
-    Data_t *data = vec_get(vec, 13);
+    Data_t *data = vec_get(Data_t *, vec, 13);
     printf("Data at index 13 after set: %d\n", data->data);
 
     vec_destroy(vec, allocator);

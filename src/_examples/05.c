@@ -23,7 +23,7 @@ int main(void)
     trie_put(trie, "point_key", &pt, allocator);
 
     // Retrieve and print int (auto casts to lhs type)
-    i32 *retrieved_int = trie_get(trie, "int_key");
+    i32 *retrieved_int = trie_get(i32 *, trie, "int_key");
     YORU_ASSERT_NOT_NULL(retrieved_int);
     printf("Retrieved int: %d\n", *retrieved_int);
 
@@ -33,7 +33,7 @@ int main(void)
     printf("Retrieved int as u8: %c\n", *retrieved_int_as_u8);
 
     // Retrieve and print Point
-    Point *retrieved_pt = trie_get(trie, "point_key");
+    Point *retrieved_pt = trie_get(Point *, trie, "point_key");
     YORU_ASSERT_NOT_NULL(retrieved_pt);
     printf("Retrieved point: (%d, %d)\n", retrieved_pt->x, retrieved_pt->y);
 

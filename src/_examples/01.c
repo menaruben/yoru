@@ -42,7 +42,7 @@ int main(void)
 
     // allocate array too large for the arena
     int *arr3 = (int *)allocator->alloc(allocator->context, 2 * ARENA_SIZE);
-    ASSERT_NULL(arr3); // should return NULL since the arena is too
+    YORU_ASSERT_NULL(arr3); // should return NULL since the arena is too
 
     // instead of freeing each array, we free the entire arena instead :)
     allocator->free(allocator->context, NULL); // free arena
