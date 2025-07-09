@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#include "../math/yoru_math_tests.h"
-#include "../strings/yoru_strings_tests.h"
-#include "../allocators/yoru_allocators_tests.h"
-#include "../collections/yoru_collections_tests.h"
+#include "yoru_math_tests.h"
+#include "yoru_strings_tests.h"
+#include "yoru_allocators_tests.h"
+#include "yoru_collections_tests.h"
 
 static Yoru_TestFunc_t test_funcs[] = {
     // Math tests

@@ -1,7 +1,7 @@
-#include "../yoru.h"
+#include "../strings/yoru_strings.h"
 #include <string.h>
 #include <stdio.h>
-#include "../testing/yoru_tests.h"
+#include "yoru_tests.h"
 
 Yoru_TestResult_t test_string_new(void)
 {

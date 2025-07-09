@@ -1,8 +1,9 @@
 #include "../testing/yoru_tests.h"
 
 // Arena Allocator tests
-#include "../testing/yoru_tests.h"
-#include "yoru_arena_allocator.h"
+#include "yoru_tests.h"
+#include "../allocators/yoru_arena_allocator.h"
+#include "../allocators/yoru_heap_allocator.h"
 
 Yoru_TestResult_t test_arena_allocator(void)
 {
@@ -36,7 +37,6 @@ Yoru_TestResult_t test_arena_allocator(void)
 }
 
 // Heap Allocator tests
-#include "yoru_heap_allocator.h"
 
 Yoru_TestResult_t test_heap_allocator(void)
 {

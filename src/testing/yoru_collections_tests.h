@@ -1,4 +1,4 @@
-#include "../testing/yoru_tests.h"
+#include "yoru_tests.h"
 #include "../collections/yoru_collections.h"
 
 // List Tests
