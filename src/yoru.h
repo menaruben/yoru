@@ -11,4 +11,10 @@
 #include "./testing/yoru_tests.h"
 #include "./futures/yoru_futures.h"
 
+#ifdef YORU_STRICT
+
+#define YORU_EXIT_ON_ARENA_REALLOC
+
+#endif
+
 #endif

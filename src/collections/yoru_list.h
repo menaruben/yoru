@@ -53,8 +53,8 @@ YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNod
 #define yoru_list_prepend(allocator_ptr, list_ptr, data_ptr) \
     yoru_list_prepend_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
 
-#define yoru_list_get(list_ptr, index) \
-    (typeof((list_ptr).t))yoru_list_get_impl((list_ptr).head, index, &(list_ptr).size)
+#define yoru_list_get(T_ptr, list_ptr, index) \
+    (T_ptr) yoru_list_get_impl((list_ptr).head, index, &(list_ptr).size)
 
 #define yoru_list_remove(allocator_ptr, list_ptr, index) \
     yoru_list_remove_impl(allocator_ptr, (list_ptr).head, index, &(list_ptr).size)

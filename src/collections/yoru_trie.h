@@ -34,8 +34,8 @@ YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size
 #define trie_new(allocator_ptr) \
     (TrieNode_t *)trie_node_create_impl(allocator_ptr, sizeof(TrieNode_t), 0);
 
-#define trie_get(node_ptr, key) \
-    (typeof((node_ptr)->value))trie_get_impl((void *)(node_ptr), (const u8 *)(key))
+#define trie_get(T_ptr, node_ptr, key) \
+    (T_ptr) trie_get_impl((void *)(node_ptr), (const u8 *)(key))
 
 #define trie_get_as(T, node_ptr, key) \
     (T *)trie_get_impl((void *)(node_ptr), (const u8 *)(key))

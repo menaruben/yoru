@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -std=c23 -I../ -lcurl
+CFLAGS = -Wall -std=c99 -I../ -lcurl
 
 .PHONY: clean
 

@@ -43,8 +43,8 @@ YORU_HELPER void *vec_grow_items(Yoru_Allocator_t *allocator, void **items, size
 #define vec_append(vec, item, allocator_ptr) \
     vec_append_impl((void **)&((vec).items), &(item), sizeof(*(vec).items), &(vec).size, &(vec).capacity, allocator_ptr)
 
-#define vec_get(vec, index) \
-    (typeof(vec.items))vec_get_impl((void *)vec.items, index, vec.size, sizeof(*(vec).items))
+#define vec_get(T_ptr, vec, index) \
+    (T_ptr) vec_get_impl((void *)vec.items, index, vec.size, sizeof(*(vec).items))
 
 #define vec_set(vec, index, item) \
     vec_set_impl((void *)vec.items, index, &(item), sizeof(*(vec).items), vec.size)

@@ -61,7 +61,7 @@ YORU_PRIVATE void *yoru_arena_realloc(void *ptr, size_t size)
 {
   (void)ptr;
   (void)size;
-#ifdef YORU_DEBUG
+#ifdef YORU_EXIT_ON_ARENA_REALLOC
   YORU_ERROR("Realloc is not supported in ArenaAllocator");
 #endif
   return NULL;
@@ -70,9 +70,11 @@ YORU_PRIVATE void *yoru_arena_realloc(void *ptr, size_t size)
 YORU_PRIVATE void yoru_arena_free(void *context, void *ptr)
 {
   (void)ptr;
-  YORU_ASSERT_NOT_NULL(context);
-  Yoru_ArenaAllocator_t *arena = (Yoru_ArenaAllocator_t *)context;
-  ArenaAllocator_Free(arena);
+  if (context)
+  {
+    Yoru_ArenaAllocator_t *arena = (Yoru_ArenaAllocator_t *)context;
+    ArenaAllocator_Free(arena);
+  }
 }
 
 // Implementation of the ArenaAllocator functions

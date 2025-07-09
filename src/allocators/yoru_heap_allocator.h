@@ -48,8 +48,10 @@ YORU_PRIVATE void *yoru_heap_realloc(void *ptr, size_t size)
 YORU_PRIVATE void yoru_heap_free(void *context, void *ptr)
 {
     (void)context;
-    YORU_ASSERT_NOT_NULL(ptr);
-    free(ptr);
+    if (ptr)
+    {
+        free(ptr);
+    }
 }
 
 #endif
