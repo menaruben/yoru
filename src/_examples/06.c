@@ -124,7 +124,7 @@ void *http_get(void *req)
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&dw_ctx);
 
     res = curl_easy_perform(curl_handle);
-    const char *err_msg = String_to_cstr(String_format("curl_easy_perform() failed: %s\n", curl_easy_strerror(res)), allocator);
+    const char *err_msg = Yoru_String_to_cstr(Yoru_String_format("curl_easy_perform() failed: %s\n", curl_easy_strerror(res)), allocator);
     YORU_ASSERT(res == CURLE_OK, err_msg);
 
     printf("[http_get: %lu] clean up...\n", p);

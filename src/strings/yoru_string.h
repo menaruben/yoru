@@ -13,17 +13,17 @@ typedef struct
 {
     const u8 *str;
     const size_t length;
-} String_t;
+} Yoru_String_t;
 
-YORU_API String_t String_new(const char *cstr);
-YORU_API const char *String_to_cstr(const String_t s, Yoru_Allocator_t *allocator);
-YORU_API String_t String_format(const char *format, ...);
-YORU_API String_t String_substring(const String_t s, size_t start, size_t end);
-YORU_API String_t String_at(const String_t s, size_t index);
-YORU_API bool String_equals(const String_t *a, const String_t *b);
-YORU_API bool String_equals_linear(const String_t *a, const String_t *b);
+YORU_API Yoru_String_t Yoru_String_new(const char *cstr);
+YORU_API const char *Yoru_String_to_cstr(const Yoru_String_t s, Yoru_Allocator_t *allocator);
+YORU_API Yoru_String_t Yoru_String_format(const char *format, ...);
+YORU_API Yoru_String_t Yoru_String_substring(const Yoru_String_t s, size_t start, size_t end);
+YORU_API Yoru_String_t Yoru_String_at(const Yoru_String_t s, size_t index);
+YORU_API bool Yoru_String_equals(const Yoru_String_t *a, const Yoru_String_t *b);
+YORU_API bool Yoru_String_equals_linear(const Yoru_String_t *a, const Yoru_String_t *b);
 
-YORU_API String_t String_new(const char *cstr)
+YORU_API Yoru_String_t Yoru_String_new(const char *cstr)
 {
     size_t len = 0;
     while (cstr[len] != '\0')
@@ -31,10 +31,10 @@ YORU_API String_t String_new(const char *cstr)
         len++;
     }
 
-    return (String_t){(const u8 *)cstr, len};
+    return (Yoru_String_t){(const u8 *)cstr, len};
 }
 
-YORU_API const char *String_to_cstr(const String_t s, Yoru_Allocator_t *allocator)
+YORU_API const char *Yoru_String_to_cstr(const Yoru_String_t s, Yoru_Allocator_t *allocator)
 {
     if (s.str == NULL || s.length == 0)
     {
@@ -55,7 +55,7 @@ YORU_API const char *String_to_cstr(const String_t s, Yoru_Allocator_t *allocato
     return (const char *)cstr;
 }
 
-YORU_API String_t String_format(const char *format, ...)
+YORU_API Yoru_String_t Yoru_String_format(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -63,46 +63,46 @@ YORU_API String_t String_format(const char *format, ...)
     va_end(args);
     if (length < 0)
     {
-        return (String_t){NULL, 0};
+        return (Yoru_String_t){NULL, 0};
     }
 
     u8 *buffer = (u8 *)malloc(length + 1);
     if (buffer == NULL)
     {
-        return (String_t){NULL, 0};
+        return (Yoru_String_t){NULL, 0};
     }
 
     va_start(args, format);
     vsnprintf((char *)buffer, length + 1, format, args);
     va_end(args);
 
-    return (String_t){buffer, length};
+    return (Yoru_String_t){buffer, length};
 }
 
-YORU_API String_t String_substring(const String_t s, size_t start, size_t end)
+YORU_API Yoru_String_t Yoru_String_substring(const Yoru_String_t s, size_t start, size_t end)
 {
     if (start >= s.length || end > s.length || start >= end)
     {
-        return (String_t){NULL, 0};
+        return (Yoru_String_t){NULL, 0};
     }
 
-    return (String_t){s.str + start, end - start};
+    return (Yoru_String_t){s.str + start, end - start};
 }
 
-YORU_API String_t String_at(const String_t s, size_t index)
+YORU_API Yoru_String_t Yoru_String_at(const Yoru_String_t s, size_t index)
 {
     if (index >= s.length)
     {
-        return (String_t){NULL, 0};
+        return (Yoru_String_t){NULL, 0};
     }
 
-    return (String_t){s.str + index, 1};
+    return (Yoru_String_t){s.str + index, 1};
 }
 
 /**
- * @brief Compares two String_t objects for equality.
+ * @brief Compares two Yoru_String_t objects for equality.
  */
-YORU_API bool String_equals(const String_t *a, const String_t *b)
+YORU_API bool Yoru_String_equals(const Yoru_String_t *a, const Yoru_String_t *b)
 {
     if (a->length != b->length)
         return false;
@@ -117,17 +117,17 @@ YORU_API bool String_equals(const String_t *a, const String_t *b)
 }
 
 /**
- * @brief Compares two String_t objects for equality in a linear fashion.
+ * @brief Compares two Yoru_String_t objects for equality in a linear fashion.
  */
-YORU_API bool String_equals_linear(const String_t *a, const String_t *b)
+YORU_API bool Yoru_String_equals_linear(const Yoru_String_t *a, const Yoru_String_t *b)
 {
     u8 result = 0;
     size_t max_length = a->length > b->length ? a->length : b->length;
 
     for (size_t i = 0; i < max_length; i++)
     {
-        String_t sa = String_at(*a, i);
-        String_t sb = String_at(*b, i);
+        Yoru_String_t sa = Yoru_String_at(*a, i);
+        Yoru_String_t sb = Yoru_String_at(*b, i);
 
         if (sa.str == NULL || sb.str == NULL)
         {
