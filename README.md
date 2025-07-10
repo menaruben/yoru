@@ -33,9 +33,9 @@ and debugging easier.. :) Or I will make new functions (that end with `try` or s
 Tests need to be written and improved. 
 
 # Tests and Examples
-You can run the [tests](./src/testing/yoru_tests.c) with `./yoru.sh test` or `./yoru.sh tests`.
+You can run the [tests](./src/testing/yoru_tests.c) with `./yoru.py test`. 
 
-[Examples](./src/_examples/) can be run with `./yoru.sh demo <demo-number>`. 
+[Examples](./src/_examples/) can be run with `./yoru.py demo <demo-number>`. 
 
 # Installation
 You can just copy the content of the `src` folder into your project and include the header file [yoru.h](./src/yoru.h) in your project.
