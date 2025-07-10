@@ -27,6 +27,11 @@ YORU_API void Future_cancel(Future_t *future);
 YORU_API void Future_destroy(Future_t *future);
 YORU_PRIVATE void *Future_thread_wrapper(void *context);
 
+// TODO: Add support for windows by wrapping win32 threads in functions to conform to
+//       the same interface as POSIX threads.
+
+#ifdef YORU_IMPLEMENTATION
+#ifdef _POSIX_VERSION
 YORU_API void Future_init(Future_t *future, void *(*callback)(void *), void *args)
 {
     pthread_t *thread = (pthread_t *)malloc(sizeof(pthread_t));
@@ -98,5 +103,37 @@ YORU_PRIVATE void *Future_thread_wrapper(void *context)
     ctx->ready = true;
     return ctx->result;
 }
+#else
+#include "../utils/yoru_utils.h"
+
+YORU_API void Future_init(Future_t *future, void *(*callback)(void *), void *args)
+{
+    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+}
+
+YORU_API void *Future_await(Future_t *future)
+{
+    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+    return NULL;
+}
+
+YORU_API void Future_cancel(Future_t *future)
+{
+    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+}
+
+YORU_API void Future_destroy(Future_t *future)
+{
+    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+}
+
+YORU_PRIVATE void *Future_thread_wrapper(void *context)
+{
+    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+    return NULL;
+}
+
+#endif
+#endif // YORU_IMPLEMENTATION
 
 #endif

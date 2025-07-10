@@ -1,8 +1,9 @@
-#include "../yoru.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stddef.h>
 
+#define YORU_IMPLEMENTATION
+#include "../yoru.h"
 #include "yoru_math_tests.h"
 #include "yoru_strings_tests.h"
 #include "yoru_allocators_tests.h"
