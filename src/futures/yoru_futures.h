@@ -117,32 +117,22 @@ YORU_PRIVATE void *Future_thread_wrapper(void *context)
     return ctx->result;
 }
 #elif defined(_WIN32) || defined(_WIN64)
-
 YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
 {
-    HANDLE *thread = (HANDLE *)malloc(sizeof(HANDLE));
-    if (!thread)
-    {
-        YORU_ERROR("Failed to allocate memory for thread.");
-    }
-
     Yoru_ThreadContext_t *ctx = (Yoru_ThreadContext_t *)malloc(sizeof(Yoru_ThreadContext_t));
     ctx->args = args;
     ctx->callback = callback;
     ctx->ready = false;
     future->ctx = ctx;
 
-    *thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Future_thread_wrapper, (void *)ctx, 0, NULL);
-    if (*thread == NULL)
+    future->thread = CreateThread(
+        NULL, 0, (LPTHREAD_START_ROUTINE)Future_thread_wrapper, (void *)ctx, 0, NULL
+    );
+    if (future->thread == NULL)
     {
-        free(thread);
-        future->thread = NULL;
         future->ctx->ready = true;
         future->ctx->result = NULL;
-        return;
     }
-
-    future->thread = thread;
 }
 
 YORU_API void *Future_await(Yoru_Future_t *future)
@@ -154,7 +144,6 @@ YORU_API void *Future_await(Yoru_Future_t *future)
 
     WaitForSingleObject(future->thread, INFINITE);
     CloseHandle(future->thread);
-    free(future->thread);
     future->thread = NULL;
     future->ctx->ready = true;
     return future->ctx->result;
@@ -166,7 +155,6 @@ YORU_API void Future_cancel(Yoru_Future_t *future)
     {
         TerminateThread(future->thread, 0);
         CloseHandle(future->thread);
-        free(future->thread);
         future->thread = NULL;
     }
 
@@ -179,7 +167,6 @@ YORU_API void Future_destroy(Yoru_Future_t *future)
     if (future->thread != NULL)
     {
         CloseHandle(future->thread);
-        free(future->thread);
         future->thread = NULL;
     }
 

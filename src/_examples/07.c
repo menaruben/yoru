@@ -15,15 +15,17 @@ struct work_args_t
 
 void *do_work(void *arg)
 {
+    DWORD thread_id = GetCurrentThreadId();
     struct work_args_t *args = (struct work_args_t *)arg;
     for (size_t i = 0; i < args->iterations; i++)
     {
-        printf("[do_work] iteration %zu\n", i);
+        printf("[do_work:%lu] iteration %zu\n", thread_id, i);
         Sleep(1000);
     }
 
-    printf("[do_work] work done!\n");
-    return "Work completed!";
+    printf("[do_work:%lu] work done!\n", thread_id);
+    char *result = "Work completed!";
+    return (void *)result;
 }
 
 int main(void) 
@@ -31,24 +33,14 @@ int main(void)
     Yoru_Future_t future = {0};
 
     struct work_args_t args = { .iterations = 5 };
+    DWORD start_time = GetTickCount();
     Future_init(&future, do_work, (void *)&args);
+    printf("[main] started thread to do work...\n");
     printf("[main] waiting for future to complete...\n");
-
-    for (size_t i = 0; i < 10; i++)
-    {
-        if (!future.ctx->ready)
-        {
-            printf("[main] future not ready yet, waiting...\n");
-            Sleep(1000);
-        }
-        else
-        {
-            printf("[main] future is ready!\n");
-            break;
-        }
-    }
-
-    void *result = Future_await(&future);
+    
+    char *result = (char *)Future_await(&future);
+    DWORD elapsed = GetTickCount() - start_time;
+    printf("[main] future completed in %lu ms\n", elapsed);
 
     if (result != NULL)
     {
