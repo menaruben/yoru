@@ -187,31 +187,32 @@ YORU_PRIVATE void *Future_thread_wrapper(void *context)
 
 #else
 #include "../utils/yoru_utils.h"
+#define ERROR_MSG "Futures are currently only supported on POSIX and Windows systems."
 
 YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
 {
-    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+    YORU_NOT_SUPPORTED(ERROR_MSG);
 }
 
 YORU_API void *Future_await(Yoru_Future_t *future)
 {
-    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+    YORU_NOT_SUPPORTED(ERROR_MSG);
     return NULL;
 }
 
 YORU_API void Future_cancel(Yoru_Future_t *future)
 {
-    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+    YORU_NOT_SUPPORTED(ERROR_MSG);
 }
 
 YORU_API void Future_destroy(Yoru_Future_t *future)
 {
-    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+    YORU_NOT_SUPPORTED(ERROR_MSG);
 }
 
 YORU_PRIVATE void *Future_thread_wrapper(void *context)
 {
-    YORU_NOT_SUPPORTED("Futures are currenlty only supported on POSIX systems.");
+    YORU_NOT_SUPPORTED(ERROR_MSG);
     return NULL;
 }
 
