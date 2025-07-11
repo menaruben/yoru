@@ -1,3 +1,7 @@
+#ifndef _POSIX_VERSION
+#error "This example requires a POSIX compliant system with libcurl installed."
+#endif
+
 #define YORU_IMPLEMENTATION
 #include <stdio.h>
 #include <curl/curl.h>
@@ -41,7 +45,7 @@ int main(void)
         {.url = "https://qrandom.io/api/random/string",
          .allocator = allocator};
 
-    Future_t future = {0};
+    Yoru_Future_t future = {0};
     Future_init(&future, &http_get, (void *)&req);
 
     size_t elapsed = 0;

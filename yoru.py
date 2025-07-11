@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from pathlib import Path
 from subprocess import run, CompletedProcess
-from sys import argv, exit
+from sys import argv, exit, platform
 
 # used python instead of my bash script so that i can run it on windows too :)
 # however, i will probably rewrite this in C later or make a small build tool myself
@@ -10,7 +10,10 @@ from sys import argv, exit
 CC = "gcc"
 BUILD_DIR = Path("build")
 CFLAGS = [ "-std=c99", "-Wall" ]
-LINKFLAGS = [ "-lpthread", "-lm", "-lcurl" ]
+
+POSIX_LINKFLAGS = [ "-lpthread", "-lm", "-lcurl" ]
+WINDOWS_LINKFLAGS = [ "-lm", ]
+LINKFLAGS = POSIX_LINKFLAGS if platform == "linux" else WINDOWS_LINKFLAGS
 
 def log(level: str, message: str) -> None:
     print(f"[{level.upper()}]: {message}")
@@ -33,10 +36,21 @@ def run_c(source_file: str, *args: str) -> None:
         exit(1)
 
     log("INFO", f"Program {exe.as_posix()} executed successfully")
-    process = cmd("rm", "-f", exe.as_posix())
+
+    match platform:
+        case "linux":
+            process = cmd("rm", "-f", exe.as_posix())
+        case "win32":
+            process = cmd("cmd", "/C", "del", "/F", "/Q", f"{str(exe.absolute())}.exe")
+        case _:
+            log("ERROR", f"Cannot automatically remove executable on platform {platform}.")
+            process.returncode = 1
+            
     if process.returncode != 0:
-        log("ERROR", f"Failed to remove executable {exe.as_posix()}")
+        log("ERROR", f"Failed to remove executable {exe.as_posix()}. You can remove it manually. ")
         exit(1)
+
+    log("INFO", f"Executable {exe.as_posix()} removed successfully")
 
 def run_tests() -> None:
     run_c("./src/testing/yoru_tests.c")
