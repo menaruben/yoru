@@ -46,7 +46,7 @@ int main(void)
          .allocator = allocator};
 
     Yoru_Future_t future = {0};
-    Future_init(&future, &http_get, (void *)&req);
+    Yoru_Future_init(&future, &http_get, (void *)&req);
 
     size_t elapsed = 0;
     pthread_t mainthread = pthread_self();
@@ -59,13 +59,13 @@ int main(void)
         if (elapsed >= TIMEOUT_SECONDS)
         {
             printf("[main: %lu] timeout reached, cancelling future...\n", mainthread);
-            Future_cancel(&future);
+            Yoru_Future_cancel(&future);
             printf("[main: %lu] future cancelled, exiting...\n", mainthread);
             goto cleanup;
         }
     }
 
-    struct Get_Response_t *res = (struct Get_Response_t *)Future_await(&future);
+    struct Get_Response_t *res = (struct Get_Response_t *)Yoru_Future_await(&future);
 
     if (future.ctx->err)
     {
@@ -78,7 +78,7 @@ int main(void)
 
 cleanup:
     printf("[main: %lu] cleaning up...\n", mainthread);
-    Future_destroy(&future);
+    Yoru_Future_destroy(&future);
     return 0;
 }
 
