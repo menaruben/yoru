@@ -9,6 +9,7 @@ from sys import argv, exit, platform
 
 CC = "gcc"
 BUILD_DIR = Path("build")
+DEMO_DIR = Path("./src/_examples")
 CFLAGS = [ "-std=c99", "-Wall" ]
 
 POSIX_LINKFLAGS = [ "-lpthread", "-lm", "-lcurl" ]
@@ -55,8 +56,18 @@ def run_c(source_file: str, *args: str) -> None:
 def run_tests() -> None:
     run_c("./src/testing/yoru_tests.c")
     
-def run_demo(number: str) -> None:
-    run_c(f"./src/_examples/{number}.c")
+def show_demos() -> None:
+    print("Available demos:")
+    for demo in DEMO_DIR.glob("*.c"):
+        print(f"  - {demo.stem}")
+
+def run_demo(demo: str) -> None:
+    demo_file = DEMO_DIR / f"{demo}.c"
+    if not demo_file.exists():
+        log("ERROR", f"Demo {demo} does not exist.")
+        print_usage()
+        exit(1)
+    run_c(demo_file.as_posix())
 
 def print_usage() -> None:
     print("Usage: python yoru.py <command> [option]")
@@ -77,12 +88,15 @@ if __name__ == "__main__":
 
     elif command == "demo":
         if len(argv) < 3:
-            log("ERROR", "Demo number is required")
+            log("ERROR", "Demo name is required")
             print_usage()
             exit(1)
 
-        demo_number = argv[2]
-        run_demo(demo_number)
+        arg = argv[2]
+        if arg == "--list" or arg == "-l":
+            show_demos()
+            exit(0)
+        run_demo(arg)
     
     else:
         log("ERROR", f"Unknown command: {command}")
