@@ -12,6 +12,7 @@
 #include "./strings/yoru_strings.h"
 #include "./testing/yoru_tests.h"
 #include "./futures/yoru_futures.h"
+#include "yoru_platforms.h"
 
 // some yoru features are only available in strict mode
 #ifdef YORU_STRICT

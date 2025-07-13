@@ -1,10 +1,14 @@
 #ifndef __YORU_FUTURES_H__
 #define __YORU_FUTURES_H__
 
-#ifdef _POSIX_VERSION
+#include "../yoru_platforms.h"
+
+#if YORU_PLATFORM_UNIX
 #include <pthread.h>
-#elif defined(_WIN32) || defined(_WIN64)
+#elif YORU_PLATFORM_WINDOWS
 #include <windows.h>
+#else
+#error "Unsupported platform for threads. Please use UNIX/POSIX or Windows."
 #endif
 
 #include "../yoru_defs.h"
@@ -22,12 +26,12 @@ typedef struct Yoru_ThreadContext_t
 
 typedef struct Yoru_Future_t
 {
-#ifdef _POSIX_VERSION
+#if YORU_PLATFORM_UNIX
     pthread_t thread;
-#elif defined(_WIN32) || defined(_WIN64)
+#elif YORU_PLATFORM_WINDOWS
     HANDLE thread;
 #else
-    #error "Unsupported platform for threads. Please use POSIX or Windows."
+#error "Unsupported platform for threads. Please use POSIX or Windows."
 #endif
     Yoru_ThreadContext_t *ctx;
 } Yoru_Future_t;
@@ -39,55 +43,43 @@ YORU_API void Yoru_Future_destroy(Yoru_Future_t *future);
 YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context);
 
 #ifdef YORU_IMPLEMENTATION
-#ifdef _POSIX_VERSION
+#if YORU_PLATFORM_UNIX
 YORU_API void Yoru_Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
 {
-    pthread_t *thread = (pthread_t *)malloc(sizeof(pthread_t));
-    if (!thread)
-    {
-        YORU_ERROR("Failed to allocate memory for thread.");
-    }
-
     Yoru_ThreadContext_t *ctx = (Yoru_ThreadContext_t *)malloc(sizeof(Yoru_ThreadContext_t));
     ctx->args = args;
     ctx->callback = callback;
     ctx->ready = false;
     future->ctx = ctx;
 
-    ctx->err = pthread_create(thread, NULL, Yoru_Future_thread_wrapper, (void *)ctx);
+    ctx->err = pthread_create(&future->thread, NULL, Yoru_Future_thread_wrapper, (void *)ctx);
     if (ctx->err != 0)
     {
-        future->thread = NULL;
+        future->thread = 0;
         future->ctx->ready = true;
         future->ctx->result = NULL;
-    }
-    else
-    {
-        future->thread = thread;
     }
 }
 
 YORU_API void *Yoru_Future_await(Yoru_Future_t *future)
 {
-    if (future->thread == NULL)
+    if (future->thread == 0)
     {
         return NULL;
     }
 
-    (void)pthread_join(*(future->thread), NULL);
-    free(future->thread);
-    future->thread = NULL;
+    (void)pthread_join(future->thread, NULL);
+    future->thread = 0;
     future->ctx->ready = true;
     return future->ctx->result;
 }
 
 YORU_API void Yoru_Future_cancel(Yoru_Future_t *future)
 {
-    if (future->thread != NULL)
+    if (future->thread != 0)
     {
-        pthread_cancel(*(future->thread));
-        free(future->thread);
-        future->thread = NULL;
+        pthread_cancel(future->thread);
+        future->thread = 0;
     }
 
     future->ctx->ready = true;
@@ -96,11 +88,7 @@ YORU_API void Yoru_Future_cancel(Yoru_Future_t *future)
 
 YORU_API void Yoru_Future_destroy(Yoru_Future_t *future)
 {
-    if (future->thread != NULL)
-    {
-        free(future->thread);
-        future->thread = NULL;
-    }
+    future->thread = 0;
 
     if (future->ctx != NULL)
     {
@@ -116,7 +104,7 @@ YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context)
     ctx->ready = true;
     return ctx->result;
 }
-#elif defined(_WIN32) || defined(_WIN64)
+#elif YORU_PLATFORM_WINDOWS
 YORU_API void Yoru_Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
 {
     Yoru_ThreadContext_t *ctx = (Yoru_ThreadContext_t *)malloc(sizeof(Yoru_ThreadContext_t));
@@ -126,8 +114,7 @@ YORU_API void Yoru_Future_init(Yoru_Future_t *future, void *(*callback)(void *),
     future->ctx = ctx;
 
     future->thread = CreateThread(
-        NULL, 0, (LPTHREAD_START_ROUTINE)Yoru_Future_thread_wrapper, (void *)ctx, 0, NULL
-    );
+        NULL, 0, (LPTHREAD_START_ROUTINE)Yoru_Future_thread_wrapper, (void *)ctx, 0, NULL);
     if (future->thread == NULL)
     {
         future->ctx->ready = true;
@@ -186,6 +173,7 @@ YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context)
 }
 
 #else
+
 #include "../utils/yoru_utils.h"
 #define ERROR_MSG "Futures are currently only supported on POSIX and Windows systems."
 
@@ -215,8 +203,8 @@ YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context)
     YORU_NOT_SUPPORTED(ERROR_MSG);
     return NULL;
 }
+#endif // else
 
-#endif
 #endif // YORU_IMPLEMENTATION
 
 #endif

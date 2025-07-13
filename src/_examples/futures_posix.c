@@ -1,7 +1,3 @@
-#ifndef _POSIX_VERSION
-#error "This example requires a POSIX compliant system with libcurl installed."
-#endif
-
 #define YORU_IMPLEMENTATION
 #include <stdio.h>
 #include <curl/curl.h>

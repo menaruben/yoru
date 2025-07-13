@@ -11,7 +11,7 @@
 
 #define NUM_CASES 7
 
-#define EXPECT_MSG(msg_ptr, expected, actual) sprintf(msg_ptr, "Expected: %lld, Actual: %lld\n", (i64)expected, (i64)actual)
+#define EXPECT_MSG(msg_ptr, expected, actual) sprintf(msg_ptr, "Expected: %ld, Actual: %ld\n", (i64)expected, (i64)actual)
 
 #define GENERATE_MODULO_TESTS(TYPE, F)                                             \
     Yoru_TestResult_t test_##TYPE##_modulo(void)                                   \
@@ -47,7 +47,7 @@ GENERATE_MODULO_TESTS(i32, i32_modulo)
 GENERATE_MODULO_TESTS(i64, i64_modulo)
 
 #define NUM_UNSIGNED_CASES 5
-#define EXPECT_MSG_UNSIGNED(msg_ptr, expected, actual) sprintf(msg_ptr, "Expected: %llu, Actual: %llu\n", (u64)expected, (u64)actual)
+#define EXPECT_MSG_UNSIGNED(msg_ptr, expected, actual) sprintf(msg_ptr, "Expected: %lu, Actual: %lu\n", (u64)expected, (u64)actual)
 #define GENERATE_UNSIGNED_MODULO_TESTS(TYPE, F)                                    \
     Yoru_TestResult_t test_##TYPE##_modulo(void)                                   \
     {                                                                              \
