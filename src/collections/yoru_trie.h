@@ -17,6 +17,8 @@
 #include "../inttypes/yoru_inttypes.h"
 #include "../allocators/yoru_allocators.h"
 #include "../yoru_defs.h"
+#include "../results/yoru_results.h"
+#include "../utils/yoru_utils.h"
 
 typedef struct TrieNode_t
 {
@@ -26,9 +28,16 @@ typedef struct TrieNode_t
 } TrieNode_t;
 
 YORU_HELPER void *trie_node_create_impl(Yoru_Allocator_t *allocator, size_t node_size, u8 key);
+
 YORU_HELPER void trie_put_impl(void *root, const u8 *key, void *value, size_t node_size, Yoru_Allocator_t *allocator);
+YORU_HELPER Yoru_Error_t trie_put_try_impl(void *root, const u8 *key, void *value, size_t node_size, Yoru_Allocator_t *allocator);
+
 YORU_HELPER void *trie_get_impl(void *root, const u8 *key);
+YORU_HELPER Yoru_Result_t trie_get_try_impl(void *root, const u8 *key);
+
 YORU_HELPER void trie_remove_impl(void *root, const u8 *key);
+YORU_HELPER Yoru_Error_t trie_remove_try_impl(void *root, const u8 *key);
+
 YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size_t node_size);
 
 #define trie_new(allocator_ptr) \
@@ -37,14 +46,29 @@ YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size
 #define trie_get(T_ptr, node_ptr, key) \
     (T_ptr) trie_get_impl((void *)(node_ptr), (const u8 *)(key))
 
+#define trie_get_try(node_ptr, key) \
+    (Yoru_Result_t) trie_get_try_impl((void *)(node_ptr), (const u8 *)(key))
+
 #define trie_get_as(T, node_ptr, key) \
     (T *)trie_get_impl((void *)(node_ptr), (const u8 *)(key))
+
+#define trie_get_as_try(T, node_ptr, key) \
+    (Yoru_Result_t) trie_get_try_impl((void *)(node_ptr), (const u8 *)(key))
 
 #define trie_put(node_ptr, key, value_ptr, allocator_ptr) \
     (void)trie_put_impl((void *)(node_ptr), (const u8 *)(key), (void *)(value_ptr), sizeof(*(node_ptr)), allocator_ptr)
 
+#define trie_put_try(node_ptr, key, value_ptr, allocator_ptr) \
+    (Yoru_Error_t) trie_put_try_impl((void *)(node_ptr), (const u8 *)(key), (void *)(value_ptr), sizeof(*(node_ptr)), allocator_ptr)
+
 #define trie_remove(node_ptr, key) \
     (void)trie_remove_impl((void *)(node_ptr), (const u8 *)(key), sizeof(*(node_ptr)))
+
+#define trie_remove_try_(node_ptr, key) \
+    (Yoru_Error_t) trie_remove_try_impl((void *)(node_ptr), (const u8 *)(key), sizeof(*(node_ptr)))
+
+#define trie_remove_try(node_ptr, key) \
+    (Yoru_Error_t) trie_remove_try_impl((void *)(node_ptr), (const u8 *)(key))
 
 #define trie_destroy(node_ptr, allocator_ptr) \
     (void)trie_destroy_impl(allocator_ptr, (void *)(node_ptr), sizeof(*(node_ptr)))
@@ -84,6 +108,20 @@ YORU_HELPER void trie_put_impl(
     node->value = value;
 }
 
+YORU_HELPER Yoru_Error_t trie_put_try_impl(
+    void *root,
+    const u8 *key,
+    void *value,
+    size_t node_size,
+    Yoru_Allocator_t *allocator)
+{
+    if (!allocator || !root || !key)
+        return YORU_ERR_ARGUMENT_NULL;
+
+    trie_put_impl(root, key, value, node_size, allocator);
+    return YORU_OK;
+}
+
 YORU_HELPER void *trie_get_impl(void *root, const u8 *key)
 {
     TrieNode_t *node = (TrieNode_t *)root;
@@ -95,6 +133,21 @@ YORU_HELPER void *trie_get_impl(void *root, const u8 *key)
         node = node->children[c];
     }
     return node->value;
+}
+
+YORU_HELPER Yoru_Result_t trie_get_try_impl(void *root, const u8 *key)
+{
+    if (!root)
+        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(root) " is NULL"};
+
+    if (!key)
+        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(key) " is NULL"};
+
+    void *value = trie_get_impl(root, key);
+    if (!value)
+        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_KEY_NOT_FOUND, .message = "Key not found"};
+
+    return (Yoru_Result_t){.value = value, .err = YORU_OK};
 }
 
 YORU_HELPER void trie_remove_impl(void *root, const u8 *key)
@@ -111,6 +164,15 @@ YORU_HELPER void trie_remove_impl(void *root, const u8 *key)
         node = node->children[c];
     }
     node->value = NULL;
+}
+
+YORU_HELPER Yoru_Error_t trie_remove_try_impl(void *root, const u8 *key)
+{
+    if (!root || !key)
+        return YORU_ERR_ARGUMENT_NULL;
+
+    trie_remove_impl(root, key);
+    return YORU_OK;
 }
 
 YORU_HELPER void trie_destroy_impl(Yoru_Allocator_t *allocator, void *node, size_t node_size)

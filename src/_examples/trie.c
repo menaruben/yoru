@@ -7,7 +7,77 @@ typedef struct
     int x, y;
 } Point;
 
+void safe_trie_example();
+void unsafe_trie_example();
+
 int main(void)
+{
+    printf("Safe trie example:\n");
+    safe_trie_example();
+    printf("----------------------------------------------\n");
+    printf("Unsafe trie example:\n");
+    unsafe_trie_example();
+    return 0;
+}
+
+void safe_trie_example()
+{
+    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
+    YORU_ASSERT_NOT_NULL(allocator);
+    TrieNode_t *trie = trie_new(allocator);
+
+    Yoru_Result_t res;
+    Yoru_Error_t err;
+
+    i32 int_val = 72;
+    err = trie_put_try(trie, "int_key", &int_val, allocator);
+    if (err != YORU_OK)
+    {
+        printf("Error putting int: %s\n", yoru_error_to_string(err));
+        return;
+    }
+
+    // Store a Point
+    Point pt = {10, 20};
+    err = trie_put_try(trie, "point_key", &pt, allocator);
+    if (err != YORU_OK)
+    {
+        printf("Error putting point: %s\n", yoru_error_to_string(err));
+        return;
+    }
+
+    // Retrieve and print int (auto casts to lhs type)
+    res = trie_get_try(trie, "int_key");
+    if (res.err != YORU_OK)
+    {
+        printf("Error getting int: %s\n", yoru_error_to_string(res.err));
+        return;
+    }
+    i32 *retrieved_int = (i32 *)res.value;
+    printf("Retrieved int: %d\n", *retrieved_int);
+
+    res = trie_get_try(trie, "point_key");
+    if (res.err != YORU_OK)
+    {
+        printf("Error getting point: %s\n", yoru_error_to_string(res.err));
+        return;
+    }
+
+    Point *retrieved_pt = (Point *)res.value;
+    printf("Retrieved point: (%d, %d)\n", retrieved_pt->x, retrieved_pt->y);
+
+    // unknown key
+    res = trie_get_try(trie, "unknown_key");
+    if (res.err != YORU_OK)
+    {
+        printf("Error getting unknown key: %s\n", yoru_error_to_string(res.err));
+        return;
+    }
+
+    trie_destroy(trie, allocator);
+}
+
+void unsafe_trie_example()
 {
     Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
     YORU_ASSERT_NOT_NULL(allocator);
