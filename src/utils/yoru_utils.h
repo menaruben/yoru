@@ -3,4 +3,6 @@
 
 #include "./yoru_todo.h"
 
+#define YORU_NAMEOF(x) #x
+
 #endif
