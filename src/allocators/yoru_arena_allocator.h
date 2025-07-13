@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "yoru_allocator_type.h"
 #include "../yoru_defs.h"
+#include "../results/yoru_results.h"
 
 typedef struct
 {
@@ -16,8 +17,13 @@ typedef struct
 YORU_API Yoru_Allocator_t *Yoru_ArenaAllocator_new(size_t capacity);
 
 YORU_PRIVATE void *yoru_arena_alloc(void *context, size_t size);
+YORU_PRIVATE Yoru_Result_t yoru_arena_alloc_try(void *context, size_t size);
+
 YORU_PRIVATE void *yoru_arena_realloc(void *ptr, size_t size);
+YORU_PRIVATE Yoru_Result_t yoru_arena_realloc_try(void *context, void *ptr, size_t size);
+
 YORU_PRIVATE void yoru_arena_free(void *context, void *ptr);
+YORU_PRIVATE Yoru_Result_t yoru_arena_free_try(void *context, void *ptr);
 
 YORU_PRIVATE Yoru_ArenaAllocator_t *Yoru_ArenaAllocator_Init(size_t capacity);
 YORU_PRIVATE void *ArenaAllocator_Alloc(Yoru_ArenaAllocator_t *arena, const size_t size);
@@ -45,8 +51,11 @@ YORU_API Yoru_Allocator_t *Yoru_ArenaAllocator_new(size_t capacity)
 
   allocator->context = (void *)arena;
   allocator->alloc = yoru_arena_alloc;
+  allocator->alloc_try = yoru_arena_alloc_try;
   allocator->realloc = yoru_arena_realloc;
+  allocator->realloc_try = yoru_arena_realloc_try;
   allocator->free = yoru_arena_free;
+  allocator->free_try = yoru_arena_free_try;
   return allocator;
 }
 
@@ -55,6 +64,16 @@ YORU_PRIVATE void *yoru_arena_alloc(void *context, size_t size)
 {
   Yoru_ArenaAllocator_t *arena = (Yoru_ArenaAllocator_t *)context;
   return ArenaAllocator_Alloc(arena, size);
+}
+
+YORU_PRIVATE Yoru_Result_t yoru_arena_alloc_try(void *context, size_t size)
+{
+  void *ptr = yoru_arena_alloc(context, size);
+  if (ptr == NULL)
+  {
+    return (Yoru_Result_t){NULL, YORU_ERR_ALLOC};
+  }
+  return (Yoru_Result_t){ptr, YORU_OK};
 }
 
 YORU_PRIVATE void *yoru_arena_realloc(void *ptr, size_t size)
@@ -67,6 +86,17 @@ YORU_PRIVATE void *yoru_arena_realloc(void *ptr, size_t size)
   return NULL;
 }
 
+YORU_PRIVATE Yoru_Result_t yoru_arena_realloc_try(void *context, void *ptr, size_t size)
+{
+  (void)ptr;
+  (void)size;
+  if (context)
+  {
+    return (Yoru_Result_t){NULL, YORU_ERR_REALLOC};
+  }
+  return (Yoru_Result_t){NULL, YORU_ERR_ARGUMENT_NULL};
+}
+
 YORU_PRIVATE void yoru_arena_free(void *context, void *ptr)
 {
   (void)ptr;
@@ -75,6 +105,17 @@ YORU_PRIVATE void yoru_arena_free(void *context, void *ptr)
     Yoru_ArenaAllocator_t *arena = (Yoru_ArenaAllocator_t *)context;
     ArenaAllocator_Free(arena);
   }
+}
+
+YORU_PRIVATE Yoru_Result_t yoru_arena_free_try(void *context, void *ptr)
+{
+  (void)ptr;
+  if (context)
+  {
+    yoru_arena_free(context, ptr);
+    return (Yoru_Result_t){NULL, YORU_OK};
+  }
+  return (Yoru_Result_t){NULL, YORU_ERR_ARGUMENT_NULL};
 }
 
 // Implementation of the ArenaAllocator functions

@@ -5,6 +5,8 @@
 #include "../allocators/yoru_allocators.h"
 #include "../asserts/yoru_asserts.h"
 #include "../yoru_defs.h"
+#include "../results/yoru_results.h"
+#include "../utils/yoru_utils.h"
 
 typedef struct Yoru_ListNode_t
 {
@@ -20,20 +22,32 @@ typedef struct Yoru_ListNode_t
         size_t size;           \
     }
 
+typedef Yoru_Result(Yoru_ListNode_t *, Yoru_Error_t) Yoru_ListNode_Result_t;
+
 YORU_HELPER void *yoru_listnode_new_impl(Yoru_Allocator_t *allocator);
+
 YORU_HELPER Yoru_ListNode_t *yoru_listnode_get_at(Yoru_ListNode_t *head, size_t index, size_t list_size);
+YORU_HELPER Yoru_ListNode_Result_t yoru_listnode_get_at_try_impl(Yoru_ListNode_t *head, size_t index, size_t list_size);
 
 YORU_HELPER void yoru_list_destroy_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head);
 
 YORU_HELPER void yoru_list_insert_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, void *data, size_t *list_size);
+YORU_HELPER Yoru_Error_t yoru_list_insert_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, void *data, size_t *list_size);
+
 YORU_HELPER void yoru_list_append_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
+YORU_HELPER Yoru_Error_t yoru_list_append_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
+
 YORU_HELPER void yoru_list_prepend_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
+YORU_HELPER Yoru_Error_t yoru_list_prepend_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
 
 YORU_HELPER void *yoru_list_get_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size);
+YORU_HELPER Yoru_Result_t yoru_list_get_try_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size);
+
 YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size);
+YORU_HELPER Yoru_Error_t yoru_list_remove_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size);
 
 #define yoru_list_new(T, allocator_ptr) \
-    {.head = (Yoru_ListNode_t *)yoru_listnode_new_impl(allocator_ptr), .size = 0 }
+    {.head = (Yoru_ListNode_t *)yoru_listnode_new_impl(allocator_ptr), .size = 0}
 
 #define yoru_list_destroy(list, allocator_ptr)              \
     do                                                      \
@@ -46,17 +60,32 @@ YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNod
 #define yoru_list_insert(allocator_ptr, list_ptr, index, data_ptr) \
     yoru_list_insert_impl(allocator_ptr, (list_ptr).head, index, data_ptr, &(list_ptr).size)
 
+#define yoru_list_insert_try(allocator_ptr, list_ptr, index, data_ptr) \
+    yoru_list_insert_try_impl(allocator_ptr, (list_ptr).head, index, data_ptr, &(list_ptr).size)
+
 #define yoru_list_append(allocator_ptr, list_ptr, data_ptr) \
     yoru_list_append_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
+
+#define yoru_list_append_try(allocator_ptr, list_ptr, data_ptr) \
+    yoru_list_append_try_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
 
 #define yoru_list_prepend(allocator_ptr, list_ptr, data_ptr) \
     yoru_list_prepend_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
 
+#define yoru_list_prepend_try(allocator_ptr, list_ptr, data_ptr) \
+    yoru_list_prepend_try_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
+
 #define yoru_list_get(T_ptr, list_ptr, index) \
     (T_ptr) yoru_list_get_impl((list_ptr).head, index, &(list_ptr).size)
 
+#define yoru_list_get_try(T_ptr, list_ptr, index) \
+    (Yoru_Result_t) yoru_list_get_try_impl((list_ptr).head, index, &(list_ptr).size)
+
 #define yoru_list_remove(allocator_ptr, list_ptr, index) \
     yoru_list_remove_impl(allocator_ptr, (list_ptr).head, index, &(list_ptr).size)
+
+#define yoru_list_remove_try(allocator_ptr, list_ptr, index) \
+    yoru_list_remove_try_impl(allocator_ptr, (list_ptr).head, index, &(list_ptr).size)
 
 #ifdef YORU_IMPLEMENTATION
 YORU_HELPER void *yoru_listnode_new_impl(Yoru_Allocator_t *allocator)
@@ -83,6 +112,21 @@ YORU_HELPER Yoru_ListNode_t *yoru_listnode_get_at(Yoru_ListNode_t *head, size_t 
         node = node->next;
     }
     return node;
+}
+
+YORU_HELPER Yoru_ListNode_Result_t yoru_listnode_get_at_try_impl(Yoru_ListNode_t *head, size_t index, size_t list_size)
+{
+    if (index >= list_size)
+    {
+        return (Yoru_ListNode_Result_t){NULL, YORU_ERR_OUT_OF_BOUNDS};
+    }
+
+    if (head == NULL)
+    {
+        return (Yoru_ListNode_Result_t){NULL, YORU_ERR_ARGUMENT_NULL, YORU_NAMEOF(head) " is NULL"};
+    }
+
+    return (Yoru_ListNode_Result_t){yoru_listnode_get_at(head, index, list_size), YORU_OK};
 }
 
 YORU_HELPER void yoru_list_destroy_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head)
@@ -129,14 +173,50 @@ YORU_HELPER void yoru_list_insert_impl(
     (*list_size)++;
 }
 
+YORU_HELPER Yoru_Error_t yoru_list_insert_try_impl(
+    Yoru_Allocator_t *allocator,
+    Yoru_ListNode_t *head,
+    size_t index,
+    void *data,
+    size_t *list_size)
+{
+    if (allocator == NULL || head == NULL || list_size == NULL)
+    {
+        return YORU_ERR_ARGUMENT_NULL;
+    }
+
+    if (allocator->alloc == NULL)
+    {
+        return YORU_ERR_ARGUMENT_INVALID;
+    }
+
+    if (index > *list_size || index < 0)
+    {
+        return YORU_ERR_OUT_OF_BOUNDS;
+    }
+
+    yoru_list_insert_impl(allocator, head, index, data, list_size);
+    return YORU_OK;
+}
+
 YORU_HELPER void yoru_list_append_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
 {
     yoru_list_insert_impl(allocator, head, *list_size, data, list_size);
 }
 
+YORU_HELPER Yoru_Error_t yoru_list_append_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
+{
+    return yoru_list_insert_try_impl(allocator, head, *list_size, data, list_size);
+}
+
 YORU_HELPER void yoru_list_prepend_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
 {
     yoru_list_insert_impl(allocator, head, 0, data, list_size);
+}
+
+YORU_HELPER Yoru_Error_t yoru_list_prepend_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
+{
+    return yoru_list_insert_try_impl(allocator, head, 0, data, list_size);
 }
 
 YORU_HELPER void *yoru_list_get_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size)
@@ -146,6 +226,27 @@ YORU_HELPER void *yoru_list_get_impl(Yoru_ListNode_t *head, size_t index, size_t
     Yoru_ListNode_t *node = yoru_listnode_get_at(head, index, *list_size);
     YORU_ASSERT_NOT_NULL(node);
     return node->data;
+}
+
+YORU_HELPER Yoru_Result_t yoru_list_get_try_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size)
+{
+    if (head == NULL)
+    {
+        return (Yoru_Result_t){NULL, YORU_ERR_ARGUMENT_NULL, YORU_NAMEOF(head) " is NULL"};
+    }
+
+    if (index >= *list_size || index < 0)
+    {
+        return (Yoru_Result_t){NULL, YORU_ERR_OUT_OF_BOUNDS};
+    }
+
+    Yoru_ListNode_t *node = yoru_listnode_get_at(head, index, *list_size);
+    if (node == NULL)
+    {
+        return (Yoru_Result_t){NULL, YORU_ERR_ARGUMENT_INVALID, "Node not found at index"};
+    }
+
+    return (Yoru_Result_t){node->data, YORU_OK, YORU_OK};
 }
 
 YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size)
@@ -164,6 +265,28 @@ YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNod
     node = NULL; // avoid dangling pointer
     (*list_size)--;
 }
+
+YORU_HELPER Yoru_Error_t yoru_list_remove_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size)
+{
+    if (allocator == NULL || head == NULL || list_size == NULL)
+    {
+        return YORU_ERR_ARGUMENT_NULL;
+    }
+
+    if (allocator->free == NULL)
+    {
+        return YORU_ERR_ARGUMENT_INVALID;
+    }
+
+    if (index >= *list_size || index < 0)
+    {
+        return YORU_ERR_OUT_OF_BOUNDS;
+    }
+
+    yoru_list_remove_impl(allocator, head, index, list_size);
+    return YORU_OK;
+}
+
 #endif // YORU_IMPLEMENTATION
 
 #endif

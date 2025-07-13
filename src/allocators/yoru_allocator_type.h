@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include "../functions/yoru_functions.h"
+#include "../results/yoru_results.h"
 
 /**
  * @brief Structure representing a memory allocator.
@@ -20,6 +21,11 @@ typedef struct Yoru_Allocator_t
   FUNC(void *, alloc, void *, size_t);
   FUNC(void, free, void *, void *);
   FUNC(void *, realloc, void *, size_t);
+
+  // Optional functions for error handling
+  Yoru_Result_t (*alloc_try)(void *, size_t);
+  Yoru_Result_t (*realloc_try)(void *, void *, size_t);
+  Yoru_Result_t (*free_try)(void *, void *);
   void *context;
 } Yoru_Allocator_t;
 
