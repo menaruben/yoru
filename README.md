@@ -22,9 +22,11 @@ I am adding some features like:
     - arena allocator
     - heap allocator
 - some math utilities like an actual modulo function (because C's `%` operator is not a modulo operator but a remainder operator)
-- futures (only working on POSIX compliant OS due to usage of `pthread.h` altough im looking for a more portable solution)
-- results and errors (need to be properly integrated with the rest of the library)
+- futures (POSIX uses pthreads whereas on windows I make use of the win32 api (windows.h))
+- results and errors (need to be properly integrated with the rest of the library) (big todo ^^)
 - generators sound really cool and interesting! I will probably implement them once I am working on the iterators since they are quite similar. (TODO)
+- flag parsing (will probably implement it [Go-like](https://gobyexample.com/command-line-flags)) (TODO)
+- some serialization stuff for json, xml and yaml (TODO)
 
 Right now I enforce some behaviour and assert these. If the assertion failed then the program stops.
 This is okay for now but I will soon return error codes rather than instantly aborting, making error handling
@@ -35,7 +37,7 @@ Tests need to be written and improved.
 # Tests and Examples
 You can run the [tests](./src/testing/yoru_tests.c) with `./yoru.py test`. 
 
-[Examples](./src/_examples/) can be run with `./yoru.py demo <demo-number>`. 
+[Examples](./src/_examples/) can be run with `./yoru.py demo <demo>`. 
 
 # Installation
 You can just copy the content of the `src` folder into your project and include the header file [yoru.h](./src/yoru.h) in your project.

@@ -21,8 +21,17 @@ typedef struct
     size_t failed;
 } YoruTestSuite_t;
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#endif
+
 u8 Yoru_Test_run(YoruTestSuite_t *suite)
 {
+
+#if defined(_WIN32) || defined(_WIN64)
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     suite->passed = 0;
     suite->failed = 0;
 

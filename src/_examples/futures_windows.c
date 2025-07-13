@@ -34,11 +34,11 @@ int main(void)
 
     struct work_args_t args = { .iterations = 5 };
     DWORD start_time = GetTickCount();
-    Future_init(&future, do_work, (void *)&args);
+    Yoru_Future_init(&future, do_work, (void *)&args);
     printf("[main] started thread to do work...\n");
     printf("[main] waiting for future to complete...\n");
     
-    char *result = (char *)Future_await(&future);
+    char *result = (char *)Yoru_Future_await(&future);
     DWORD elapsed = GetTickCount() - start_time;
     printf("[main] future completed in %lu ms\n", elapsed);
 
@@ -51,7 +51,7 @@ int main(void)
         printf("[main] future did not complete successfully.\n");
     }
 
-    Future_destroy(&future);
+    Yoru_Future_destroy(&future);
     printf("[main] future destroyed.\n");
     return 0;
 }

@@ -32,15 +32,15 @@ typedef struct Yoru_Future_t
     Yoru_ThreadContext_t *ctx;
 } Yoru_Future_t;
 
-YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args);
-YORU_API void *Future_await(Yoru_Future_t *future);
-YORU_API void Future_cancel(Yoru_Future_t *future);
-YORU_API void Future_destroy(Yoru_Future_t *future);
-YORU_PRIVATE void *Future_thread_wrapper(void *context);
+YORU_API void Yoru_Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args);
+YORU_API void *Yoru_Future_await(Yoru_Future_t *future);
+YORU_API void Yoru_Future_cancel(Yoru_Future_t *future);
+YORU_API void Yoru_Future_destroy(Yoru_Future_t *future);
+YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context);
 
 #ifdef YORU_IMPLEMENTATION
 #ifdef _POSIX_VERSION
-YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
+YORU_API void Yoru_Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
 {
     pthread_t *thread = (pthread_t *)malloc(sizeof(pthread_t));
     if (!thread)
@@ -54,7 +54,7 @@ YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void
     ctx->ready = false;
     future->ctx = ctx;
 
-    ctx->err = pthread_create(thread, NULL, Future_thread_wrapper, (void *)ctx);
+    ctx->err = pthread_create(thread, NULL, Yoru_Future_thread_wrapper, (void *)ctx);
     if (ctx->err != 0)
     {
         future->thread = NULL;
@@ -67,7 +67,7 @@ YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void
     }
 }
 
-YORU_API void *Future_await(Yoru_Future_t *future)
+YORU_API void *Yoru_Future_await(Yoru_Future_t *future)
 {
     if (future->thread == NULL)
     {
@@ -81,7 +81,7 @@ YORU_API void *Future_await(Yoru_Future_t *future)
     return future->ctx->result;
 }
 
-YORU_API void Future_cancel(Yoru_Future_t *future)
+YORU_API void Yoru_Future_cancel(Yoru_Future_t *future)
 {
     if (future->thread != NULL)
     {
@@ -94,7 +94,7 @@ YORU_API void Future_cancel(Yoru_Future_t *future)
     future->ctx->result = NULL;
 }
 
-YORU_API void Future_destroy(Yoru_Future_t *future)
+YORU_API void Yoru_Future_destroy(Yoru_Future_t *future)
 {
     if (future->thread != NULL)
     {
@@ -109,7 +109,7 @@ YORU_API void Future_destroy(Yoru_Future_t *future)
     }
 }
 
-YORU_PRIVATE void *Future_thread_wrapper(void *context)
+YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context)
 {
     Yoru_ThreadContext_t *ctx = (Yoru_ThreadContext_t *)context;
     ctx->result = ctx->callback(ctx->args);
@@ -117,7 +117,7 @@ YORU_PRIVATE void *Future_thread_wrapper(void *context)
     return ctx->result;
 }
 #elif defined(_WIN32) || defined(_WIN64)
-YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
+YORU_API void Yoru_Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
 {
     Yoru_ThreadContext_t *ctx = (Yoru_ThreadContext_t *)malloc(sizeof(Yoru_ThreadContext_t));
     ctx->args = args;
@@ -126,7 +126,7 @@ YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void
     future->ctx = ctx;
 
     future->thread = CreateThread(
-        NULL, 0, (LPTHREAD_START_ROUTINE)Future_thread_wrapper, (void *)ctx, 0, NULL
+        NULL, 0, (LPTHREAD_START_ROUTINE)Yoru_Future_thread_wrapper, (void *)ctx, 0, NULL
     );
     if (future->thread == NULL)
     {
@@ -135,7 +135,7 @@ YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void
     }
 }
 
-YORU_API void *Future_await(Yoru_Future_t *future)
+YORU_API void *Yoru_Future_await(Yoru_Future_t *future)
 {
     if (future->thread == NULL)
     {
@@ -149,7 +149,7 @@ YORU_API void *Future_await(Yoru_Future_t *future)
     return future->ctx->result;
 }
 
-YORU_API void Future_cancel(Yoru_Future_t *future)
+YORU_API void Yoru_Future_cancel(Yoru_Future_t *future)
 {
     if (future->thread != NULL)
     {
@@ -162,7 +162,7 @@ YORU_API void Future_cancel(Yoru_Future_t *future)
     future->ctx->result = NULL;
 }
 
-YORU_API void Future_destroy(Yoru_Future_t *future)
+YORU_API void Yoru_Future_destroy(Yoru_Future_t *future)
 {
     if (future->thread != NULL)
     {
@@ -177,7 +177,7 @@ YORU_API void Future_destroy(Yoru_Future_t *future)
     }
 }
 
-YORU_PRIVATE void *Future_thread_wrapper(void *context)
+YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context)
 {
     Yoru_ThreadContext_t *ctx = (Yoru_ThreadContext_t *)context;
     ctx->result = ctx->callback(ctx->args);
@@ -189,28 +189,28 @@ YORU_PRIVATE void *Future_thread_wrapper(void *context)
 #include "../utils/yoru_utils.h"
 #define ERROR_MSG "Futures are currently only supported on POSIX and Windows systems."
 
-YORU_API void Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
+YORU_API void Yoru_Future_init(Yoru_Future_t *future, void *(*callback)(void *), void *args)
 {
     YORU_NOT_SUPPORTED(ERROR_MSG);
 }
 
-YORU_API void *Future_await(Yoru_Future_t *future)
+YORU_API void *Yoru_Future_await(Yoru_Future_t *future)
 {
     YORU_NOT_SUPPORTED(ERROR_MSG);
     return NULL;
 }
 
-YORU_API void Future_cancel(Yoru_Future_t *future)
+YORU_API void Yoru_Future_cancel(Yoru_Future_t *future)
 {
     YORU_NOT_SUPPORTED(ERROR_MSG);
 }
 
-YORU_API void Future_destroy(Yoru_Future_t *future)
+YORU_API void Yoru_Future_destroy(Yoru_Future_t *future)
 {
     YORU_NOT_SUPPORTED(ERROR_MSG);
 }
 
-YORU_PRIVATE void *Future_thread_wrapper(void *context)
+YORU_PRIVATE void *Yoru_Future_thread_wrapper(void *context)
 {
     YORU_NOT_SUPPORTED(ERROR_MSG);
     return NULL;

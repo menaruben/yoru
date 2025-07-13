@@ -18,7 +18,6 @@ typedef struct Yoru_ListNode_t
     {                          \
         Yoru_ListNode_t *head; \
         size_t size;           \
-        T *t;                  \
     }
 
 YORU_HELPER void *yoru_listnode_new_impl(Yoru_Allocator_t *allocator);
@@ -34,7 +33,7 @@ YORU_HELPER void *yoru_list_get_impl(Yoru_ListNode_t *head, size_t index, size_t
 YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size);
 
 #define yoru_list_new(T, allocator_ptr) \
-    {.head = (Yoru_ListNode_t *)yoru_listnode_new_impl(allocator_ptr), .size = 0, .t = (T *)NULL}
+    {.head = (Yoru_ListNode_t *)yoru_listnode_new_impl(allocator_ptr), .size = 0 }
 
 #define yoru_list_destroy(list, allocator_ptr)              \
     do                                                      \
