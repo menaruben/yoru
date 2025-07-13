@@ -25,7 +25,7 @@ I am adding some features like:
 - futures (POSIX uses pthreads whereas on windows I make use of the win32 api (windows.h))
 - results and errors (need to be properly integrated with the rest of the library) (big todo ^^)
 - generators sound really cool and interesting! I will probably implement them once I am working on the iterators since they are quite similar. (TODO)
-- flag parsing (will probably implement it [Go-like](https://gobyexample.com/command-line-flags)) (TODO)
+- flag parsing
 - some serialization stuff for json, xml and yaml (TODO)
 
 Right now I enforce some behaviour and assert these. If the assertion failed then the program stops.
