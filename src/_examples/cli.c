@@ -17,6 +17,11 @@ int main(int argc, char **argv)
 
     size_t flag_count = sizeof(flags) / sizeof(Yoru_Flag_t);
 
+    if (argc == 1) {
+        yoru_print_help(flags, flag_count, "yoru_cli_example", "This is an example of a command line interface using Yoru flags.");
+        return 1;
+    }
+
     Yoru_FlagParse_Result_t result = yoru_flagset_parse(allocator, argc, argv, flags, flag_count);
     if (result.err != YORU_FLAGPARSE_ERROR_OK)
     {

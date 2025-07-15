@@ -1,51 +1,41 @@
 #define YORU_IMPLEMENTATION
 #include "../yoru.h"
-
-#define ARRAY_SIZE 10
-
-#define ARENA_SIZE (1024 * sizeof(int))
-
-#define INIT_ARRAY(arr)                         \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            arr[i] = (int)i;                    \
-        }                                       \
-    } while (0)
-
-#define PRINT_ARRAY(arr)                        \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            printf("%d ", arr[i]);              \
-        }                                       \
-        printf("\n");                           \
-    } while (0)
+#include <stdio.h>
 
 int main(void)
 {
-    Yoru_Allocator_t *allocator = Yoru_ArenaAllocator_new(ARENA_SIZE);
-    YORU_ASSERT_NOT_NULL(allocator);
+    Yoru_Allocator_Result_t arena_result = yoru_arena_alloc(1024 * sizeof(int));
+    if (arena_result.err != YORU_OK)
+    {
+        fprintf(stderr, "Failed to allocate arena: %s\n", yoru_error_to_string(arena_result.err));
+        return 1;
+    }
 
-    // allocate an array on arena
-    int *arr1 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr1);
-    INIT_ARRAY(arr1);
-    PRINT_ARRAY(arr1);
+    Yoru_Slice_t arena = arena_result.value;
+    Yoru_Allocator_Result_t slice_result = yoru_arena_alloc_slice(&arena, 256 * sizeof(int));
+    if (slice_result.err != YORU_OK)
+    {
+        fprintf(stderr, "Failed to allocate slice: %s\n", yoru_error_to_string(slice_result.err));
+        yoru_arena_free(&arena);
+        return 1;
+    }
 
-    // allocate another array on arena
-    int *arr2 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr2);
-    INIT_ARRAY(arr2);
-    PRINT_ARRAY(arr2);
+    Yoru_Slice_t slice = slice_result.value;
+    int *data = (int *)slice.data;
+    size_t item_count = slice.capacity / sizeof(int);
 
-    // allocate array too large for the arena
-    int *arr3 = (int *)allocator->alloc(allocator->context, 2 * ARENA_SIZE);
-    YORU_ASSERT_NULL(arr3); // should return NULL since the arena is too
+    for (size_t i = 0; i < item_count; ++i)
+    {
+        data[i] = (int)i;
+    }
 
-    // instead of freeing each array, we free the entire arena instead :)
-    allocator->free(allocator->context, NULL); // free arena
+    printf("Allocated slice with %zu items:\n", item_count);
+    for (size_t i = 0; i < item_count; ++i)
+    {
+        printf("%d ", data[i]);
+    }
+    printf("\n");
+
+    yoru_arena_free(&arena);
     return 0;
 }

@@ -1,46 +1,37 @@
 #define YORU_IMPLEMENTATION
 #include "../yoru.h"
-
-#define ARRAY_SIZE 10
-
-#define INIT_ARRAY(arr)                         \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            arr[i] = (int)i;                    \
-        }                                       \
-    } while (0)
-
-#define PRINT_ARRAY(arr)                        \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            printf("%d ", arr[i]);              \
-        }                                       \
-        printf("\n");                           \
-    } while (0)
+#include <stdio.h>
 
 int main(void)
 {
-    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
-    YORU_ASSERT_NOT_NULL(allocator);
+    Yoru_Allocator_Result_t res = yoru_heap_alloc(sizeof(int) * 10);
+    if (res.err != YORU_OK)
+    {
+        fprintf(stderr, "Failed to allocate memory: %s\n", yoru_error_to_string(res.err));
+        return 1;
+    }
 
-    // allocate an array on heap
-    int *arr1 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr1);
-    INIT_ARRAY(arr1);
-    PRINT_ARRAY(arr1);
+    Yoru_Slice_t slice = res.value;
+    int *data = (int *)slice.data;
+    size_t item_count = slice.capacity / sizeof(int);
 
-    // allocate another array on heap
-    int *arr2 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr2);
-    INIT_ARRAY(arr2);
-    PRINT_ARRAY(arr2);
+    for (size_t i = 0; i < item_count; ++i)
+    {
+        data[i] = (int)i;
+    }
 
-    // free the arrays
-    allocator->free(allocator->context, arr1);
-    allocator->free(allocator->context, arr2);
+    printf("Allocated slice with %zu items:\n", item_count);
+    for (size_t i = 0; i < item_count; ++i)
+    {
+        printf("%d ", data[i]);
+    }
+    printf("\n");
+
+    // Free the allocated memory
+    if (slice.data)
+    {
+        yoru_heap_free(&slice);
+    }
+
     return 0;
 }
