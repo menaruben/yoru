@@ -2,7 +2,7 @@
 #define __YORU_LIST_H__
 
 #include <stddef.h>
-#include "../allocators/yoru_allocators.h"
+#include "../memory/yoru_memory.h"
 #include "../asserts/yoru_asserts.h"
 #include "../yoru_defs.h"
 #include "../results/yoru_results.h"
@@ -15,278 +15,236 @@ typedef struct Yoru_ListNode_t
     struct Yoru_ListNode_t *prev;
 } Yoru_ListNode_t;
 
-#define List_t(T)              \
-    struct                     \
-    {                          \
-        Yoru_ListNode_t *head; \
-        size_t size;           \
-    }
+typedef struct Yoru_List_t
+{
+    Yoru_ListNode_t *head;
+    size_t size;
+} Yoru_List_t;
 
-typedef Yoru_Result(Yoru_ListNode_t *, Yoru_Error_t) Yoru_ListNode_Result_t;
+/// @brief Initialize a linked list.
+/// @param list Pointer to the Yoru_List_t structure to initialize.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the list is NULL.
+YORU_API Yoru_Error_t yoru_list_init(Yoru_List_t *list);
 
-YORU_HELPER void *yoru_listnode_new_impl(Yoru_Allocator_t *allocator);
+/// @brief Free the linked list and its nodes.
+/// @param list Pointer to the Yoru_List_t structure to free.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the list is NULL.
+YORU_API Yoru_Error_t yoru_list_free(Yoru_List_t *list);
 
-YORU_HELPER Yoru_ListNode_t *yoru_listnode_get_at(Yoru_ListNode_t *head, size_t index, size_t list_size);
-YORU_HELPER Yoru_ListNode_Result_t yoru_listnode_get_at_try_impl(Yoru_ListNode_t *head, size_t index, size_t list_size);
+/// @brief Get an item from the linked list at a specific index.
+/// @param list Pointer to the Yoru_List_t structure.
+/// @param index The index of the item to get.
+/// @param item Pointer to the location where the item will be stored.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the list is NULL, item is NULL, or index is out of bounds.
+YORU_API Yoru_Error_t yoru_list_get(const Yoru_List_t *list, const size_t index, YORU_OUT void *item);
 
-YORU_HELPER void yoru_list_destroy_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head);
+/// @brief Set an item in the linked list at a specific index.
+/// @param list Pointer to the Yoru_List_t structure.
+/// @param index The index at which to set the item.
+/// @param item Pointer to the item to set in the list.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the list is NULL, item is NULL, or index is out of bounds.
+YORU_API Yoru_Error_t yoru_list_set(Yoru_List_t *list, const size_t index, const void *item);
 
-YORU_HELPER void yoru_list_insert_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, void *data, size_t *list_size);
-YORU_HELPER Yoru_Error_t yoru_list_insert_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, void *data, size_t *list_size);
+/// @brief Remove an item from the linked list at a specific index.
+/// @param list Pointer to the Yoru_List_t structure.
+/// @param index The index of the item to remove.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the list is NULL, or index is out of bounds.
+YORU_API Yoru_Error_t yoru_list_remove(Yoru_List_t *list, const size_t index);
 
-YORU_HELPER void yoru_list_append_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
-YORU_HELPER Yoru_Error_t yoru_list_append_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
+/// @brief Prepend an item to the linked list.
+/// @param list Pointer to the Yoru_List_t structure.
+/// @param item Pointer to the item to prepend to the list.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the list is NULL, or item is NULL.
+YORU_API Yoru_Error_t yoru_list_prepend(Yoru_List_t *list, const void *item);
 
-YORU_HELPER void yoru_list_prepend_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
-YORU_HELPER Yoru_Error_t yoru_list_prepend_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size);
-
-YORU_HELPER void *yoru_list_get_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size);
-YORU_HELPER Yoru_Result_t yoru_list_get_try_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size);
-
-YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size);
-YORU_HELPER Yoru_Error_t yoru_list_remove_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size);
-
-#define yoru_list_new(T, allocator_ptr) \
-    {.head = (Yoru_ListNode_t *)yoru_listnode_new_impl(allocator_ptr), .size = 0}
-
-#define yoru_list_destroy(list, allocator_ptr)              \
-    do                                                      \
-    {                                                       \
-        yoru_list_destroy_impl(allocator_ptr, (list).head); \
-        (list).head = NULL;                                 \
-        (list).size = 0;                                    \
-    } while (0)
-
-#define yoru_list_insert(allocator_ptr, list_ptr, index, data_ptr) \
-    yoru_list_insert_impl(allocator_ptr, (list_ptr).head, index, data_ptr, &(list_ptr).size)
-
-#define yoru_list_insert_try(allocator_ptr, list_ptr, index, data_ptr) \
-    yoru_list_insert_try_impl(allocator_ptr, (list_ptr).head, index, data_ptr, &(list_ptr).size)
-
-#define yoru_list_append(allocator_ptr, list_ptr, data_ptr) \
-    yoru_list_append_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
-
-#define yoru_list_append_try(allocator_ptr, list_ptr, data_ptr) \
-    yoru_list_append_try_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
-
-#define yoru_list_prepend(allocator_ptr, list_ptr, data_ptr) \
-    yoru_list_prepend_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
-
-#define yoru_list_prepend_try(allocator_ptr, list_ptr, data_ptr) \
-    yoru_list_prepend_try_impl(allocator_ptr, (list_ptr).head, data_ptr, &(list_ptr).size)
-
-#define yoru_list_get(T_ptr, list_ptr, index) \
-    (T_ptr) yoru_list_get_impl((list_ptr).head, index, &(list_ptr).size)
-
-#define yoru_list_get_try(T_ptr, list_ptr, index) \
-    (Yoru_Result_t) yoru_list_get_try_impl((list_ptr).head, index, &(list_ptr).size)
-
-#define yoru_list_remove(allocator_ptr, list_ptr, index) \
-    yoru_list_remove_impl(allocator_ptr, (list_ptr).head, index, &(list_ptr).size)
-
-#define yoru_list_remove_try(allocator_ptr, list_ptr, index) \
-    yoru_list_remove_try_impl(allocator_ptr, (list_ptr).head, index, &(list_ptr).size)
+/// @brief Append an item to the linked list.
+/// @param list Pointer to the Yoru_List_t structure.
+/// @param item Pointer to the item to append to the list.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the list is NULL, or item is NULL.
+YORU_API Yoru_Error_t yoru_list_append(Yoru_List_t *list, const void *item);
 
 #ifdef YORU_IMPLEMENTATION
-YORU_HELPER void *yoru_listnode_new_impl(Yoru_Allocator_t *allocator)
+YORU_API Yoru_Error_t yoru_list_init(Yoru_List_t *list)
 {
-    YORU_ASSERT_NOT_NULL(allocator);
-    YORU_ASSERT_NOT_NULL(allocator->alloc);
-    YORU_ASSERT_NOT_NULL(allocator->free);
+    if (!list)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(list) " cannot be NULL"};
 
-    Yoru_ListNode_t *head = (Yoru_ListNode_t *)allocator->alloc(allocator->context, sizeof(Yoru_ListNode_t));
-    YORU_ASSERT_NOT_NULL(head);
-    head->data = NULL;
-    head->next = head; // circular
-    head->prev = head; // circular
-    return head;
+    list->head = NULL;
+    list->size = 0;
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
 }
 
-YORU_HELPER Yoru_ListNode_t *yoru_listnode_get_at(Yoru_ListNode_t *head, size_t index, size_t list_size)
+YORU_API Yoru_Error_t yoru_list_free(Yoru_List_t *list)
 {
-    YORU_ASSERT_NOT_NULL(head);
-    YORU_ASSERT(index <= list_size, "Index out of bounds");
-    Yoru_ListNode_t *node = head->next;
-    for (size_t i = 0; i < index; ++i)
-    {
-        node = node->next;
-    }
-    return node;
-}
-
-YORU_HELPER Yoru_ListNode_Result_t yoru_listnode_get_at_try_impl(Yoru_ListNode_t *head, size_t index, size_t list_size)
-{
-    if (index >= list_size)
-    {
-        return (Yoru_ListNode_Result_t){NULL, YORU_ERR_OUT_OF_BOUNDS};
-    }
-
-    if (head == NULL)
-    {
-        return (Yoru_ListNode_Result_t){NULL, YORU_ERR_ARGUMENT_NULL, YORU_NAMEOF(head) " is NULL"};
-    }
-
-    return (Yoru_ListNode_Result_t){yoru_listnode_get_at(head, index, list_size), YORU_OK};
-}
-
-YORU_HELPER void yoru_list_destroy_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head)
-{
-    YORU_ASSERT_NOT_NULL(allocator);
-    YORU_ASSERT_NOT_NULL(allocator->free);
-    YORU_ASSERT_NOT_NULL(head);
-
-    Yoru_ListNode_t *node = head->next;
-    while (node != NULL && node != head)
+    if (!list)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(list) " cannot be NULL"};
+    Yoru_ListNode_t *node = list->head;
+    while (node)
     {
         Yoru_ListNode_t *next = node->next;
-        allocator->free(allocator->context, node);
+        if (node->data)
+        {
+            Yoru_Slice_t slice = {.data = node->data, .offset = 0, .capacity = 0};
+            yoru_heap_free(&slice);
+        }
+        Yoru_Slice_t node_slice = {.data = node, .offset = 0, .capacity = 0};
+        yoru_heap_free(&node_slice);
         node = next;
     }
-    allocator->free(allocator->context, head);
-    head = NULL; // avoid dangling pointer
+    list->head = NULL;
+    list->size = 0;
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
 }
 
-YORU_HELPER void yoru_list_insert_impl(
-    Yoru_Allocator_t *allocator,
-    Yoru_ListNode_t *head,
-    size_t index,
-    void *data,
-    size_t *list_size)
+YORU_API Yoru_Error_t yoru_list_get(const Yoru_List_t *list, const size_t index, YORU_OUT void *item)
 {
-    YORU_ASSERT_NOT_NULL(allocator);
-    YORU_ASSERT_NOT_NULL(allocator->alloc);
-    YORU_ASSERT_NOT_NULL(allocator->free);
-    YORU_ASSERT_NOT_NULL(head);
-    YORU_ASSERT(index <= *list_size, "Index out of bounds");
+    if (!list)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(list) " cannot be NULL"};
+    if (!item)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(item) " cannot be NULL"};
+    if (index >= list->size)
+        return (Yoru_Error_t){.type = YORU_ERR_OUT_OF_BOUNDS, .message = YORU_NAMEOF(index) " is out of bounds."};
 
-    Yoru_ListNode_t *node = yoru_listnode_get_at(head, index, *list_size);
-    YORU_ASSERT_NOT_NULL(node);
-
-    Yoru_ListNode_t *new_node = (Yoru_ListNode_t *)allocator->alloc(allocator->context, sizeof(Yoru_ListNode_t));
-    YORU_ASSERT_NOT_NULL(new_node);
-    new_node->data = data;
-    new_node->next = node;
-    new_node->prev = node->prev;
-    node->prev->next = new_node;
-    node->prev = new_node;
-
-    (*list_size)++;
+    Yoru_ListNode_t *node = list->head;
+    for (size_t i = 0; i < index; ++i)
+        node = node->next;
+    if (!node || !node->data)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = "Node or node data is NULL"};
+    memcpy(item, node->data, sizeof(*item));
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
 }
 
-YORU_HELPER Yoru_Error_t yoru_list_insert_try_impl(
-    Yoru_Allocator_t *allocator,
-    Yoru_ListNode_t *head,
-    size_t index,
-    void *data,
-    size_t *list_size)
+YORU_API Yoru_Error_t yoru_list_set(Yoru_List_t *list, const size_t index, const void *item)
 {
-    if (allocator == NULL || head == NULL || list_size == NULL)
+    if (!list)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(list) " cannot be NULL"};
+
+    if (!item)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(item) " cannot be NULL"};
+
+    if (index >= list->size)
+        return (Yoru_Error_t){.type = YORU_ERR_OUT_OF_BOUNDS, .message = YORU_NAMEOF(index) " is out of bounds."};
+
+    Yoru_ListNode_t *node = list->head;
+    for (size_t i = 0; i < index; ++i)
+        node = node->next;
+
+    if (!node || !node->data)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = "Node or node data is NULL"};
+
+    memcpy(node->data, item, sizeof(*item));
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
+}
+
+YORU_API Yoru_Error_t yoru_list_prepend(Yoru_List_t *list, const void *item)
+{
+    if (!list)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(list) " cannot be NULL"};
+    if (!item)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(item) " cannot be NULL"};
+
+    Yoru_ListNode_t *node = NULL;
+    Yoru_Slice_t node_slice = {0};
+    Yoru_Error_t err = yoru_heap_alloc(sizeof(Yoru_ListNode_t), &node_slice);
+    if (err.type != YORU_OK)
+        return err;
+    node = (Yoru_ListNode_t *)node_slice.data;
+
+    Yoru_Slice_t data_slice = {0};
+    err = yoru_heap_alloc(sizeof(*item), &data_slice);
+    if (err.type != YORU_OK)
     {
-        return YORU_ERR_ARGUMENT_NULL;
+        yoru_heap_free(&node_slice);
+        return err;
+    }
+    node->data = data_slice.data;
+    memcpy(node->data, item, sizeof(*item));
+    node->prev = NULL;
+    node->next = list->head;
+    if (list->head)
+        list->head->prev = node;
+    list->head = node;
+    list->size++;
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
+}
+
+YORU_API Yoru_Error_t yoru_list_append(Yoru_List_t *list, const void *item)
+{
+    if (!list)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(list) " cannot be NULL"};
+
+    if (!item)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(item) " cannot be NULL"};
+
+    Yoru_ListNode_t *node = NULL;
+    Yoru_Slice_t node_slice = {0};
+    Yoru_Error_t err = yoru_heap_alloc(sizeof(Yoru_ListNode_t), &node_slice);
+    if (err.type != YORU_OK)
+        return err;
+    node = (Yoru_ListNode_t *)node_slice.data;
+
+    Yoru_Slice_t data_slice = {0};
+    err = yoru_heap_alloc(sizeof(*item), &data_slice);
+    if (err.type != YORU_OK)
+    {
+        yoru_heap_free(&node_slice);
+        return err;
+    }
+    node->data = data_slice.data;
+    memcpy(node->data, item, sizeof(*item));
+    node->next = NULL;
+
+    if (!list->head)
+    {
+        node->prev = NULL;
+        list->head = node;
+    }
+    else
+    {
+        Yoru_ListNode_t *tail = list->head;
+        while (tail->next)
+            tail = tail->next;
+        tail->next = node;
+        node->prev = tail;
+    }
+    list->size++;
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
+}
+
+YORU_API Yoru_Error_t yoru_list_remove(Yoru_List_t *list, const size_t index)
+{
+    if (!list)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(list) " cannot be NULL"};
+
+    if (index >= list->size)
+        return (Yoru_Error_t){.type = YORU_ERR_OUT_OF_BOUNDS, .message = YORU_NAMEOF(index) " is out of bounds."};
+
+    Yoru_ListNode_t *node = list->head;
+    for (size_t i = 0; i < index; ++i)
+        node = node->next;
+
+    if (!node)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = "Node is NULL"};
+
+    if (node->prev)
+        node->prev->next = node->next;
+    else
+        list->head = node->next;
+
+    if (node->next)
+        node->next->prev = node->prev;
+
+    if (node->data)
+    {
+        Yoru_Slice_t data_slice = {.data = node->data, .offset = 0, .capacity = 0};
+        yoru_heap_free(&data_slice);
     }
 
-    if (allocator->alloc == NULL)
-    {
-        return YORU_ERR_ARGUMENT_INVALID;
-    }
-
-    if (index > *list_size || index < 0)
-    {
-        return YORU_ERR_OUT_OF_BOUNDS;
-    }
-
-    yoru_list_insert_impl(allocator, head, index, data, list_size);
-    return YORU_OK;
-}
-
-YORU_HELPER void yoru_list_append_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
-{
-    yoru_list_insert_impl(allocator, head, *list_size, data, list_size);
-}
-
-YORU_HELPER Yoru_Error_t yoru_list_append_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
-{
-    return yoru_list_insert_try_impl(allocator, head, *list_size, data, list_size);
-}
-
-YORU_HELPER void yoru_list_prepend_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
-{
-    yoru_list_insert_impl(allocator, head, 0, data, list_size);
-}
-
-YORU_HELPER Yoru_Error_t yoru_list_prepend_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, void *data, size_t *list_size)
-{
-    return yoru_list_insert_try_impl(allocator, head, 0, data, list_size);
-}
-
-YORU_HELPER void *yoru_list_get_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size)
-{
-    YORU_ASSERT_NOT_NULL(head);
-    YORU_ASSERT(index < *list_size, "Index out of bounds");
-    Yoru_ListNode_t *node = yoru_listnode_get_at(head, index, *list_size);
-    YORU_ASSERT_NOT_NULL(node);
-    return node->data;
-}
-
-YORU_HELPER Yoru_Result_t yoru_list_get_try_impl(Yoru_ListNode_t *head, size_t index, size_t *list_size)
-{
-    if (head == NULL)
-    {
-        return (Yoru_Result_t){NULL, YORU_ERR_ARGUMENT_NULL, YORU_NAMEOF(head) " is NULL"};
-    }
-
-    if (index >= *list_size || index < 0)
-    {
-        return (Yoru_Result_t){NULL, YORU_ERR_OUT_OF_BOUNDS};
-    }
-
-    Yoru_ListNode_t *node = yoru_listnode_get_at(head, index, *list_size);
-    if (node == NULL)
-    {
-        return (Yoru_Result_t){NULL, YORU_ERR_ARGUMENT_INVALID, "Node not found at index"};
-    }
-
-    return (Yoru_Result_t){node->data, YORU_OK, YORU_OK};
-}
-
-YORU_HELPER void yoru_list_remove_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size)
-{
-    YORU_ASSERT_NOT_NULL(allocator);
-    YORU_ASSERT_NOT_NULL(allocator->free);
-    YORU_ASSERT_NOT_NULL(head);
-    YORU_ASSERT(index < *list_size, "Index out of bounds");
-    Yoru_ListNode_t *node = yoru_listnode_get_at(head, index, *list_size);
-    YORU_ASSERT_NOT_NULL(node);
-    YORU_ASSERT_NOT_NULL(node->prev);
-    YORU_ASSERT_NOT_NULL(node->next);
-    node->prev->next = node->next;
-    node->next->prev = node->prev;
-    allocator->free(allocator->context, node);
-    node = NULL; // avoid dangling pointer
-    (*list_size)--;
-}
-
-YORU_HELPER Yoru_Error_t yoru_list_remove_try_impl(Yoru_Allocator_t *allocator, Yoru_ListNode_t *head, size_t index, size_t *list_size)
-{
-    if (allocator == NULL || head == NULL || list_size == NULL)
-    {
-        return YORU_ERR_ARGUMENT_NULL;
-    }
-
-    if (allocator->free == NULL)
-    {
-        return YORU_ERR_ARGUMENT_INVALID;
-    }
-
-    if (index >= *list_size || index < 0)
-    {
-        return YORU_ERR_OUT_OF_BOUNDS;
-    }
-
-    yoru_list_remove_impl(allocator, head, index, list_size);
-    return YORU_OK;
+    Yoru_Slice_t node_slice = {.data = node, .offset = 0, .capacity = 0};
+    yoru_heap_free(&node_slice);
+    list->size--;
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
 }
 
 #endif // YORU_IMPLEMENTATION
-
 #endif

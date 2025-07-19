@@ -3,13 +3,13 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include "../collections/yoru_trie.h"
 #include "../inttypes/yoru_inttypes.h"
-#include "../allocators/yoru_allocators.h"
+#include "../memory/yoru_memory.h"
 #include "../yoru_defs.h"
 #include "../results/yoru_results.h"
 #include "string.h"
 #include "../utils/yoru_utils.h"
+#include "../collections/yoru_trie.h"
 
 typedef union
 {
@@ -41,7 +41,7 @@ typedef struct
 } Yoru_Flag_t;
 
 #define yoru_flag_new(short_name, name, description, is_required, type) \
-    ((Yoru_Flag_t){short_name, name, description, is_required, type, false})
+    ((Yoru_Flag_t){short_name, name, description, is_required, false, {0}, type})
 
 typedef enum
 {
@@ -52,11 +52,15 @@ typedef enum
     YORU_FLAGPARSE_ERROR_FLAGSET_CREATION_FAILED,
     YORU_FLAGPARSE_ERROR_FLAG_HAS_NO_NAME,
     YORU_FLAGPARSE_ERROR_FLAG_REQUIRES_VALUE,
+} Yoru_FlagParse_ErrorType_t;
+
+typedef struct
+{
+    Yoru_FlagParse_ErrorType_t err;
+    const char *message;
 } Yoru_FlagParse_Error_t;
 
-typedef Yoru_Result(Yoru_Flag_t *, Yoru_FlagParse_Error_t) Yoru_FlagParse_Result_t;
-
-YORU_API const char *yoru_flagparse_error_to_string(Yoru_FlagParse_Error_t err);
+YORU_API const char *yoru_flagparse_error_to_string(Yoru_FlagParse_ErrorType_t err);
 
 YORU_API void yoru_print_help(
     Yoru_Flag_t *flags,
@@ -64,8 +68,7 @@ YORU_API void yoru_print_help(
     const char *program_name,
     const char *description);
 
-YORU_API Yoru_FlagParse_Result_t yoru_flagset_parse(
-    Yoru_Allocator_t *allocator,
+YORU_API Yoru_FlagParse_Error_t yoru_flagset_parse(
     int argc,
     char **argv,
     Yoru_Flag_t *flags,
@@ -74,10 +77,9 @@ YORU_API Yoru_FlagParse_Result_t yoru_flagset_parse(
 YORU_API void yoru_print_flag(Yoru_Flag_t *flag);
 
 YORU_HELPER Yoru_Error_t yoru_flagset_init(
-    TrieNode_t *trie,
+    Yoru_TrieNode_t *trie,
     Yoru_Flag_t *flags,
-    size_t flag_count,
-    Yoru_Allocator_t *allocator);
+    size_t flag_count);
 
 YORU_HELPER bool yoru_all_required_flags_set(
     Yoru_Flag_t *flags,
@@ -85,7 +87,7 @@ YORU_HELPER bool yoru_all_required_flags_set(
 
 #ifdef YORU_IMPLEMENTATION
 
-YORU_API const char *yoru_flagparse_error_to_string(Yoru_FlagParse_Error_t err)
+YORU_API const char *yoru_flagparse_error_to_string(Yoru_FlagParse_ErrorType_t err)
 {
     switch (err)
     {
@@ -142,133 +144,160 @@ YORU_API void yoru_print_help(
     }
 }
 
-YORU_API Yoru_FlagParse_Result_t yoru_flagset_parse(
-    Yoru_Allocator_t *allocator,
+YORU_API Yoru_FlagParse_Error_t yoru_flagset_parse(
     int argc,
     char **argv,
     Yoru_Flag_t *flags,
     size_t flag_count)
 {
     Yoru_Error_t err;
-    Yoru_Result_t res;
-    TrieNode_t *flagset = trie_new(allocator);
-
-    err = yoru_flagset_init(flagset, flags, flag_count, allocator);
-    if (err != YORU_OK)
+    Yoru_TrieNode_t flagset = {0};
+    err = yoru_trie_init(&flagset, sizeof(Yoru_Flag_t));
+    if (err.type != YORU_OK)
     {
-        trie_destroy(flagset, allocator);
-        return (Yoru_FlagParse_Result_t){
-            .value = NULL,
+        return (Yoru_FlagParse_Error_t){
             .err = YORU_FLAGPARSE_ERROR_FLAGSET_CREATION_FAILED,
             .message = "Failed to initialize flagset"};
+    }
+
+    err = yoru_flagset_init(&flagset, flags, flag_count);
+    if (err.type != YORU_OK)
+    {
+        yoru_trie_free(&flagset);
+        return (Yoru_FlagParse_Error_t){
+            .err = YORU_FLAGPARSE_ERROR_FLAGSET_CREATION_FAILED,
+            .message = "Failed to initialize flagset with provided flags"};
     }
 
     // skip first argument (program name)
     for (int i = 1; i < argc; i++)
     {
         char *flagname = argv[i];
-        res = trie_get_try(flagset, flagname);
-        if (res.err != YORU_OK)
+        Yoru_Flag_t flag = {0};
+        err = yoru_trie_get(&flagset, flagname, &flag);
+        if (err.type != YORU_OK)
         {
-            trie_destroy(flagset, allocator);
-            return (Yoru_FlagParse_Result_t){
+            yoru_trie_free(&flagset);
+            return (Yoru_FlagParse_Error_t){
                 .err = YORU_FLAGPARSE_ERROR_UNKNOWN_FLAG,
-                .message = Yoru_String_to_cstr(Yoru_String_format("Unknown flag '%s'", flagname), allocator)};
+                .message = YORU_TMPSTR("Unknown flag '", flagname, "'")};
         }
 
-        Yoru_Flag_t *flags = (Yoru_Flag_t *)res.value;
-
         char *flagvalue = argv[i + 1];
-        if (!flagvalue && flags->type != YORU_FLAG_TYPE_BOOL)
+        if (!flagvalue && flag.type != YORU_FLAG_TYPE_BOOL)
         {
-            trie_destroy(flagset, allocator);
-            return (Yoru_FlagParse_Result_t){
+            yoru_trie_free(&flagset);
+            return (Yoru_FlagParse_Error_t){
                 .err = YORU_FLAGPARSE_ERROR_FLAG_REQUIRES_VALUE,
-                .message = Yoru_String_to_cstr(Yoru_String_format("Flag '%s' requires a value", flagname), allocator)};
+                .message = YORU_TMPSTR("Flag '", flagname, "' requires a value")};
         }
         i++;
 
-        switch (flags->type)
+        switch (flag.type)
         {
         case YORU_FLAG_TYPE_BOOL:
             if (!flagvalue)
             {
-                flags->value.boolean = true;
-                flags->is_set = true;
+                flag.value.boolean = true;
+                flag.is_set = true;
                 break;
             }
 
             if (strcmp(flagvalue, "true") == 0 || strcmp(flagvalue, "1") == 0)
             {
-                flags->value.boolean = true;
-                flags->is_set = true;
+                flag.value.boolean = true;
+                flag.is_set = true;
                 break;
             }
 
             if (strcmp(flagvalue, "false") == 0 || strcmp(flagvalue, "0") == 0)
             {
-                flags->value.boolean = false;
-                flags->is_set = true;
+                flag.value.boolean = false;
+                flag.is_set = true;
                 break;
             }
 
-            trie_destroy(flagset, allocator);
-            return (Yoru_FlagParse_Result_t){
+            yoru_trie_free(&flagset);
+            return (Yoru_FlagParse_Error_t){
                 .err = YORU_FLAGPARSE_ERROR_INVALID_VALUE_FOR_FLAG_TYPE,
-                .message = Yoru_String_to_cstr(Yoru_String_format("Invalid boolean value for flag '%s'", flagname), allocator)};
+                .message = YORU_TMPSTR("Invalid boolean value for flag '", flagname, "'")};
 
         case YORU_FLAG_TYPE_INT:
             char *endptr;
-            flags->value.integer = strtoimax(flagvalue, &endptr, 10);
+            flag.value.integer = strtoimax(flagvalue, &endptr, 10);
 
             if (*endptr != '\0')
             {
-                trie_destroy(flagset, allocator);
-                return (Yoru_FlagParse_Result_t){
+                yoru_trie_free(&flagset);
+                return (Yoru_FlagParse_Error_t){
                     .err = YORU_FLAGPARSE_ERROR_INVALID_VALUE_FOR_FLAG_TYPE,
-                    .message = Yoru_String_to_cstr(Yoru_String_format("Invalid integer value for flag '%s'", flagname), allocator)};
+                    .message = YORU_TMPSTR("Invalid integer value for flag '", flagname, "'")};
             }
-            flags->is_set = true;
+            flag.is_set = true;
             break;
 
         case YORU_FLAG_TYPE_UINT:
             char *endptr_u;
-            flags->value.uinteger = strtoumax(flagvalue, &endptr_u, 10);
+            flag.value.uinteger = strtoumax(flagvalue, &endptr_u, 10);
 
             if (*endptr_u != '\0')
             {
-                trie_destroy(flagset, allocator);
-                return (Yoru_FlagParse_Result_t){
+                yoru_trie_free(&flagset);
+                return (Yoru_FlagParse_Error_t){
                     .err = YORU_FLAGPARSE_ERROR_INVALID_VALUE_FOR_FLAG_TYPE,
-                    .message = Yoru_String_to_cstr(Yoru_String_format("Invalid unsigned integer value for flag '%s'", flagname), allocator)};
+                    .message = YORU_TMPSTR("Invalid unsigned integer value for flag '", flagname, "'")};
             }
-            flags->is_set = true;
+            flag.is_set = true;
             break;
 
         case YORU_FLAG_TYPE_FLOAT:
             char *endptr_f;
-            flags->value.floating = strtod(flagvalue, &endptr_f);
+            flag.value.floating = strtod(flagvalue, &endptr_f);
 
             if (*endptr_f != '\0')
             {
-                trie_destroy(flagset, allocator);
-                return (Yoru_FlagParse_Result_t){
+                yoru_trie_free(&flagset);
+                return (Yoru_FlagParse_Error_t){
                     .err = YORU_FLAGPARSE_ERROR_INVALID_VALUE_FOR_FLAG_TYPE,
-                    .message = Yoru_String_to_cstr(Yoru_String_format("Invalid float value for flag '%s'", flagname), allocator)};
+                    .message = YORU_TMPSTR("Invalid float value for flag '", flagname, "'")};
             }
-            flags->is_set = true;
+            flag.is_set = true;
             break;
 
         case YORU_FLAG_TYPE_STRING:
-            flags->value.string = flagvalue;
-            flags->is_set = true;
+            flag.value.string = flagvalue;
+            flag.is_set = true;
             break;
 
         default:
-            trie_destroy(flagset, allocator);
-            return (Yoru_FlagParse_Result_t){
+            yoru_trie_free(&flagset);
+            return (Yoru_FlagParse_Error_t){
                 .err = YORU_FLAGPARSE_ERROR_INVALID_VALUE_FOR_FLAG_TYPE,
-                .message = Yoru_String_to_cstr(Yoru_String_format("Unknown flag type for flag '%s'", flagname), allocator)};
+                .message = YORU_TMPSTR("Unknown flag type for flag '", flagname, "'")};
+        }
+
+        // update the flag in the flagset
+        err = yoru_trie_set(&flagset, flagname, &flag);
+        if (err.type != YORU_OK)
+        {
+            yoru_trie_free(&flagset);
+            return (Yoru_FlagParse_Error_t){
+                .err = YORU_FLAGPARSE_ERROR_FLAGSET_CREATION_FAILED,
+                .message = "Failed to set flag value in flagset"};
+        }
+
+        for (size_t j = 0; j < flag_count; ++j)
+        {
+            if (flags[j].name && strcmp(flags[j].name, flagname) == 0)
+            {
+                flags[j] = flag;
+                break;
+            }
+            if (flags[j].short_name && strcmp(flags[j].short_name, flagname) == 0)
+            {
+                flags[j] = flag;
+                break;
+            }
         }
     }
 
@@ -276,14 +305,14 @@ YORU_API Yoru_FlagParse_Result_t yoru_flagset_parse(
     {
         if (flags[i].is_required && !flags[i].is_set)
         {
-            return (Yoru_FlagParse_Result_t){
+            return (Yoru_FlagParse_Error_t){
                 .err = YORU_FLAGPARSE_ERROR_REQUIRED_FLAG_NOT_SET,
-                .message = Yoru_String_to_cstr(Yoru_String_format("Required flag '%s' is not set", flags[i].name), allocator)};
+                .message = YORU_TMPSTR("Required flag '", flags[i].name ? flags[i].name : flags[i].short_name, "' is not set")};
         }
     }
 
-    trie_destroy(flagset, allocator);
-    return (Yoru_FlagParse_Result_t){.value = flags, .err = YORU_FLAGPARSE_ERROR_OK};
+    yoru_trie_free(&flagset);
+    return (Yoru_FlagParse_Error_t){.err = YORU_FLAGPARSE_ERROR_OK, .message = NULL};
 }
 
 YORU_API void yoru_print_flag(Yoru_Flag_t *flag)
@@ -326,39 +355,39 @@ YORU_API void yoru_print_flag(Yoru_Flag_t *flag)
 }
 
 YORU_HELPER Yoru_Error_t yoru_flagset_init(
-    TrieNode_t *trie,
+    Yoru_TrieNode_t *trie,
     Yoru_Flag_t *flags,
-    size_t flag_count,
-    Yoru_Allocator_t *allocator)
+    size_t flag_count)
 {
-    Yoru_FlagParse_Error_t err;
+    Yoru_FlagParse_Error_t flag_err;
+    Yoru_Error_t yoru_err;
     for (size_t i = 0; i < flag_count; ++i)
     {
         if (!flags[i].name && !flags[i].short_name)
         {
-            return YORU_FLAGPARSE_ERROR_FLAG_HAS_NO_NAME;
+            return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_INVALID, .message = "Flag must have at least a name or short name"};
         }
 
         if (flags[i].name)
         {
-            err = trie_put_try(trie, flags[i].name, &flags[i], allocator);
-            if (err != YORU_OK)
+            yoru_err = yoru_trie_set(trie, flags[i].name, &flags[i]);
+            if (yoru_err.type != YORU_OK)
             {
-                return err;
+                return yoru_err;
             }
         }
 
         if (flags[i].short_name)
         {
-            err = trie_put_try(trie, flags[i].short_name, &flags[i], allocator);
-            if (err != YORU_OK)
+            yoru_err = yoru_trie_set(trie, flags[i].short_name, &flags[i]);
+            if (yoru_err.type != YORU_OK)
             {
-                return err;
+                return yoru_err;
             }
         }
     }
 
-    return YORU_OK;
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
 }
 
 bool yoru_all_required_flags_set(

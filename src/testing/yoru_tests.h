@@ -1,6 +1,8 @@
 #ifndef __YORU_TESTS_H__
 #define __YORU_TESTS_H__
 
+#include <stdbool.h>
+
 typedef struct
 {
     bool success;

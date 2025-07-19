@@ -3,15 +3,7 @@
 
 #include "../utils/yoru_utils.h"
 
-#define Yoru_Result(TValue, TError) \
-    struct                          \
-    {                               \
-        TValue value;               \
-        TError err;                 \
-        const char *message;        \
-    }
-
-typedef enum
+typedef enum Yoru_ErrorType_t
 {
     YORU_OK,
     YORU_ERR_ALLOC,
@@ -23,15 +15,19 @@ typedef enum
     YORU_ERR_ARGUMENT_NULL,
     YORU_ERR_ARGUMENT_INVALID,
     YORU_ERR_UNINITIALIZED,
+} Yoru_ErrorType_t;
+
+typedef struct Yoru_Error_t
+{
+    Yoru_ErrorType_t type;
+    const char *message;
 } Yoru_Error_t;
 
-typedef Yoru_Result(void *, Yoru_Error_t) Yoru_Result_t;
-
-const char *yoru_error_to_string(Yoru_Error_t err);
+const char *yoru_error_to_string(Yoru_ErrorType_t err);
 
 #ifdef YORU_IMPLEMENTATION
 
-const char *yoru_error_to_string(Yoru_Error_t err)
+const char *yoru_error_to_string(Yoru_ErrorType_t err)
 {
     switch (err)
     {
