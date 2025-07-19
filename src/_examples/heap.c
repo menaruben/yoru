@@ -2,36 +2,36 @@
 #include "../yoru.h"
 #include <stdio.h>
 
+#define ARRAY_SIZE 10
+
 int main(void)
 {
-    Yoru_Allocator_Result_t res = yoru_heap_alloc(sizeof(int) * 10);
-    if (res.err != YORU_OK)
+    Yoru_Slice_t arr1 = {0};
+    Yoru_Error_t err = yoru_heap_alloc(sizeof(int) * ARRAY_SIZE, &arr1);
+    if (err.type != YORU_OK)
     {
-        fprintf(stderr, "Failed to allocate memory: %s\n", yoru_error_to_string(res.err));
+        fprintf(stderr, "Failed to allocate memory: %s\n", yoru_error_to_string(err.type));
+        if (err.message)
+        {
+            fprintf(stderr, "Error message: %s\n", err.message);
+        }
         return 1;
     }
 
-    Yoru_Slice_t slice = res.value;
-    int *data = (int *)slice.data;
-    size_t item_count = slice.capacity / sizeof(int);
+    printf("Allocated memory for %zu integers.\n", arr1.capacity / sizeof(int));
+    printf("Memory address: %p\n", arr1.data);
+    printf("Offset: %zu, Capacity: %zu\n", arr1.offset, arr1.capacity);
 
-    for (size_t i = 0; i < item_count; ++i)
+    for (size_t i = 0; i < ARRAY_SIZE; ++i)
     {
-        data[i] = (int)i;
+        ((int *)arr1.data)[i] = (int)i;
     }
 
-    printf("Allocated slice with %zu items:\n", item_count);
-    for (size_t i = 0; i < item_count; ++i)
+    printf("Array contents:\n");
+    for (size_t i = 0; i < ARRAY_SIZE; ++i)
     {
-        printf("%d ", data[i]);
+        printf("%d ", ((int *)arr1.data)[i]);
     }
     printf("\n");
-
-    // Free the allocated memory
-    if (slice.data)
-    {
-        yoru_heap_free(&slice);
-    }
-
     return 0;
 }
