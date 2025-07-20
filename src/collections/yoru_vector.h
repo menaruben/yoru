@@ -1,243 +1,161 @@
 #ifndef __YORU_VECTOR_H__
 #define __YORU_VECTOR_H__
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include "../asserts/yoru_asserts.h"
-#include "../inttypes/yoru_inttypes.h"
-#include "../allocators/yoru_allocators.h"
 #include "../yoru_defs.h"
-#include "../utils/yoru_utils.h"
-#include "../results/yoru_results.h"
+#include "yoru_array.h"
+#include <stddef.h>
 
-#define INITIAL_CAPACITY 16
+#define YORU_VECTOR_INITIAL_SIZE 16
 
-YORU_HELPER void vec_append_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Yoru_Allocator_t *allocator);
-YORU_HELPER Yoru_Error_t vec_append_try_impl(void **items, void *item, size_t item_size, size_t *size, size_t *capacity, Yoru_Allocator_t *allocator);
+#define YORU_VECTOR_GROWTH_FACTOR 2
 
-YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t capacity, size_t item_size);
-YORU_HELPER Yoru_Result_t vec_get_try_impl(void *items, size_t index, size_t capacity, size_t item_size);
+/// @brief Vector is a dynamic array that can grow in size as needed.
+typedef struct Yoru_Vector_t
+{
+    Yoru_Array_t vector;
+    size_t highest_set_index; // used for appending
+} Yoru_Vector_t;
 
-YORU_HELPER void vec_set_impl(void *items, size_t index, void *item, size_t item_size, size_t capacity);
-YORU_HELPER Yoru_Error_t vec_set_try_impl(void *items, size_t index, void *item, size_t item_size, size_t capacity);
+/// @brief Initialize a vector.
+/// @param item_size The size of each item in bytes.
+/// @param vector Pointer to the vector to initialize.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the vector is NULL or if memory allocation fails.
+YORU_API Yoru_Error_t yoru_vector_init(const size_t item_size, YORU_OUT Yoru_Vector_t *vector);
 
-YORU_HELPER bool is_within_bounds(size_t index, size_t capacity);
+/// @brief Free the vector.
+/// @param vector Pointer to the vector to free.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the vector is NULL.
+YORU_API Yoru_Error_t yoru_vector_free(Yoru_Vector_t *vector);
 
-YORU_HELPER void *vec_alloc_items(Yoru_Allocator_t *allocator, size_t item_size);
+/// @brief Set an item in the vector at a specific index.
+/// @param vector Pointer to the vector.
+/// @param index The index at which to set the item.
+/// @param item Pointer to the item to set in the vector.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the vector is NULL, or if the item is NULL.
+YORU_API Yoru_Error_t yoru_vector_set(Yoru_Vector_t *vector, size_t index, const void *item);
 
-YORU_HELPER void vec_destroy_items_impl(void *items, Yoru_Allocator_t *allocator);
+/// @brief Get an item from the vector at a specific index.
+/// @param vector Pointer to the vector.
+/// @param index The index from which to get the item.
+/// @param out_item Pointer to the location where the item will be stored.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the vector is NULL, or if the out_item is NULL.
+YORU_API Yoru_Error_t yoru_vector_get(const Yoru_Vector_t *vector, size_t index, YORU_OUT void *out_item);
 
-YORU_HELPER void *vec_grow_items(Yoru_Allocator_t *allocator, void **items, size_t *size, size_t *capacity, size_t item_size);
-YORU_HELPER Yoru_Result_t vec_grow_items_try(Yoru_Allocator_t *allocator, void **items, size_t *size, size_t *capacity, size_t item_size);
+/// @brief Append an item to the vector.
+/// @param vector Pointer to the vector.
+/// @param item Pointer to the item to append to the vector.
+/// @return Yoru_Error_t Returns YORU_OK on success, or an error if the vector is NULL, or if the item is NULL.
+YORU_API Yoru_Error_t yoru_vector_append(Yoru_Vector_t *vector, const void *item);
 
-#define Vec_t(T)         \
-    struct               \
-    {                    \
-        T *items;        \
-        size_t size;     \
-        size_t capacity; \
-    }
-
-#define vec_new(T, allocator_ptr) \
-    {.items = (T *)vec_alloc_items(allocator_ptr, sizeof(T)), .size = 0, .capacity = INITIAL_CAPACITY}
-
-#define vec_destroy(vec, allocator_ptr)                             \
-    do                                                              \
-    {                                                               \
-        vec_destroy_items_impl((void *)(vec).items, allocator_ptr); \
-        (vec).items = NULL;                                         \
-        (vec).size = 0;                                             \
-        (vec).capacity = 0;                                         \
-    } while (0)
-
-#define vec_append(vec, item, allocator_ptr) \
-    vec_append_impl((void **)&((vec).items), &(item), sizeof(*(vec).items), &(vec).size, &(vec).capacity, allocator_ptr)
-
-#define vec_append_try(vec, item, allocator_ptr) \
-    vec_append_try_impl((void **)&((vec).items), &(item), sizeof(*(vec).items), &(vec).size, &(vec).capacity, allocator_ptr)
-
-#define vec_get(T_ptr, vec, index) \
-    (T_ptr) vec_get_impl((void *)vec.items, index, vec.size, sizeof(*(vec).items))
-
-#define vec_get_try(vec, index) \
-    vec_get_try_impl((void *)vec.items, index, vec.size, sizeof(*(vec).items))
-
-#define vec_set(vec, index, item) \
-    vec_set_impl((void *)vec.items, index, &(item), sizeof(*(vec).items), vec.size)
-
-#define vec_set_try(vec, index, item) \
-    vec_set_try_impl((void *)vec.items, index, &(item), sizeof(*(vec).items), vec.size)
+/// @brief Get the size of the vector.
+/// @param vector Pointer to the vector.
+/// @return const size_t Returns the number of items in the vector, or 0 if the vector is NULL or has no items.
+YORU_API const size_t yoru_vector_size(const Yoru_Vector_t *vector);
 
 #ifdef YORU_IMPLEMENTATION
-YORU_HELPER void *vec_alloc_items(Yoru_Allocator_t *allocator, size_t item_size)
+YORU_API Yoru_Error_t yoru_vector_init(const size_t item_size, YORU_OUT Yoru_Vector_t *vector)
 {
-    YORU_ASSERT_NOT_NULL(allocator);
-    YORU_ASSERT_NOT_NULL(allocator->alloc);
-    YORU_ASSERT_NOT_NULL(allocator->free);
-    // context can be null because heap allocator does NOT have a context
-    void *items = allocator->alloc(allocator->context, INITIAL_CAPACITY * item_size);
-    YORU_ASSERT_NOT_NULL(items);
-    return items;
-}
-
-YORU_HELPER void vec_destroy_items_impl(void *items, Yoru_Allocator_t *allocator)
-{
-    YORU_ASSERT_NOT_NULL(allocator);
-    YORU_ASSERT_NOT_NULL(allocator->free);
-    if (items != NULL)
+    if (!vector)
     {
-        allocator->free(allocator->context, items);
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(vector) " cannot be NULL"};
     }
-}
 
-YORU_HELPER void vec_append_impl(
-    void **items,
-    void *item,
-    size_t item_size,
-    size_t *size,
-    size_t *capacity,
-    Yoru_Allocator_t *allocator)
-{
-    if (*size >= *capacity)
+    Yoru_Error_t err = yoru_array_init(item_size, YORU_VECTOR_INITIAL_SIZE, &vector->vector);
+    if (err.type != YORU_OK)
     {
-        *items = vec_grow_items(allocator, items, size, capacity, item_size);
+        return err;
     }
-    size_t index = *size * item_size;
-    memcpy((char *)(*items) + index, item, item_size);
-    (*size)++;
+
+    vector->highest_set_index = 0;
+    return (Yoru_Error_t){.type = YORU_OK, .message = NULL};
 }
 
-YORU_HELPER Yoru_Error_t vec_append_try_impl(
-    void **items,
-    void *item,
-    size_t item_size,
-    size_t *size,
-    size_t *capacity,
-    Yoru_Allocator_t *allocator)
+YORU_API Yoru_Error_t yoru_vector_free(Yoru_Vector_t *vector)
 {
-    if (*size >= *capacity)
+    if (!vector)
     {
-        Yoru_Result_t result = vec_grow_items_try(allocator, items, size, capacity, item_size);
-        if (result.err != YORU_OK)
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(vector) " cannot be NULL"};
+    }
+
+    return yoru_array_free(&vector->vector);
+}
+
+YORU_API Yoru_Error_t yoru_vector_set(Yoru_Vector_t *vector, size_t index, const void *item)
+{
+    if (!vector)
+    {
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(vector) " cannot be NULL"};
+    }
+
+    if (index > vector->highest_set_index)
+    {
+        vector->highest_set_index = index;
+    }
+
+    return yoru_array_set(&vector->vector, index, item);
+}
+
+YORU_API Yoru_Error_t yoru_vector_get(const Yoru_Vector_t *vector, size_t index, YORU_OUT void *out_item)
+{
+    if (!vector)
+    {
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(vector) " cannot be NULL"};
+    }
+
+    return yoru_array_get(&vector->vector, index, out_item);
+}
+
+YORU_API Yoru_Error_t yoru_vector_append(Yoru_Vector_t *vector, const void *item)
+{
+    if (!vector)
+    {
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(vector) " cannot be NULL"};
+    }
+
+    if (!vector->vector.slice.data)
+    {
+        return (Yoru_Error_t){.type = YORU_ERR_ARGUMENT_NULL, .message = "Vector data is NULL"};
+    }
+
+    if (vector->highest_set_index + 1 >= vector->vector.size)
+    {
+        // if target is beyond end of allocated memory of vectors array, we need to copy the array to a larger array with more capacity
+        size_t new_capacity = vector->vector.slice.capacity * YORU_VECTOR_GROWTH_FACTOR;
+        Yoru_Array_t new_array = {0};
+        Yoru_Error_t err = yoru_array_init(vector->vector.item_size, new_capacity, &new_array); // MIGHT LEAD TO UB
+        if (err.type != YORU_OK)
         {
-            return result.err;
+            return (Yoru_Error_t){.type = YORU_ERR_ALLOC, .message = "Couldn't allocate memory for the vector slice"};
         }
+
+        err = yoru_array_copy(&vector->vector, &new_array);
+        if (err.type != YORU_OK)
+        {
+            yoru_array_free(&new_array);
+            return (Yoru_Error_t){.type = YORU_ERR_ALLOC, .message = "Couldn't copy vector data to new array"};
+        }
+
+        yoru_array_free(&vector->vector);
+        vector->vector = new_array;
     }
-    size_t index = *size * item_size;
-    memcpy((char *)(*items) + index, item, item_size);
-    (*size)++;
-    return YORU_OK;
+
+    return yoru_array_set(&vector->vector, ++vector->highest_set_index, item);
 }
 
-YORU_HELPER void vec_set_impl(void *items, size_t index, void *item, size_t item_size, size_t capacity)
+YORU_API const size_t yoru_vector_size(const Yoru_Vector_t *vector)
 {
-    YORU_ASSERT(is_within_bounds(index, capacity), "Index out of bounds.");
-    void *item_ptr = (char *)items + index * item_size;
-    YORU_ASSERT_NOT_NULL(item_ptr);
-    memcpy(item_ptr, item, item_size);
-}
-
-YORU_HELPER Yoru_Result_t vec_get_try_impl(void *items, size_t index, size_t capacity, size_t item_size)
-{
-    if (!is_within_bounds(index, capacity))
+    if (!vector)
     {
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_OUT_OF_BOUNDS, .message = "Index out of bounds."};
+        return 0;
     }
 
-    if (items == NULL)
+    if (!vector->vector.slice.data)
     {
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(items) " pointer is null."};
+        return 0;
     }
 
-    void *item_ptr = (char *)items + index * item_size;
-    if (!item_ptr)
-    {
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_UNINITIALIZED};
-    }
-
-    return (Yoru_Result_t){.value = item_ptr, .err = YORU_OK, .message = NULL};
-}
-
-YORU_HELPER void *vec_get_impl(void *items, size_t index, size_t capacity, size_t item_size)
-{
-    YORU_ASSERT(is_within_bounds(index, capacity), "Index out of bounds.");
-    void *item_ptr = (char *)items + index * item_size;
-    YORU_ASSERT_NOT_NULL(item_ptr);
-    return item_ptr;
-}
-
-YORU_HELPER Yoru_Error_t vec_set_try_impl(void *items, size_t index, void *item, size_t item_size, size_t capacity)
-{
-    if (items == NULL)
-    {
-        return YORU_ERR_ARGUMENT_NULL;
-    }
-
-    if (!is_within_bounds(index, capacity))
-    {
-        return YORU_ERR_OUT_OF_BOUNDS;
-    }
-
-    void *item_ptr = (char *)items + index * item_size;
-    if (!item_ptr)
-    {
-        return YORU_ERR_UNINITIALIZED;
-    }
-
-    memcpy(item_ptr, item, item_size);
-    return YORU_OK;
-}
-
-YORU_HELPER bool is_within_bounds(size_t index, size_t capacity)
-{
-    return index < capacity && index >= 0;
-}
-
-YORU_HELPER void *vec_grow_items(Yoru_Allocator_t *allocator, void **items, size_t *size, size_t *capacity, size_t item_size)
-{
-    YORU_ASSERT_NOT_NULL(allocator);
-    YORU_ASSERT_NOT_NULL(allocator->realloc);
-    YORU_ASSERT_NOT_NULL(items);
-    YORU_ASSERT_NOT_NULL(*items);
-    while (*capacity <= *size)
-    {
-        *capacity *= 2;
-    }
-    void *new_items = allocator->realloc(*items, (*capacity) * item_size);
-    YORU_ASSERT_NOT_NULL(new_items);
-    *items = new_items;
-    return new_items;
-}
-
-YORU_HELPER Yoru_Result_t vec_grow_items_try(Yoru_Allocator_t *allocator, void **items, size_t *size, size_t *capacity, size_t item_size)
-{
-    if (!items)
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(items) " is null."};
-
-    if (!allocator)
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(allocator) " is null."};
-
-    if (!allocator->realloc)
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_ARGUMENT_INVALID, .message = YORU_NAMEOF(allocator->realloc) " is null."};
-
-    if (!*items)
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_ARGUMENT_NULL, .message = YORU_NAMEOF(*items) " is null."};
-
-    while (*capacity <= *size)
-    {
-        *capacity *= 2;
-    }
-    void *new_items = allocator->realloc(*items, (*capacity) * item_size);
-    if (new_items == NULL)
-    {
-        return (Yoru_Result_t){.value = NULL, .err = YORU_ERR_REALLOC, .message = "Failed to reallocate memory."};
-    }
-    *items = new_items;
-    return (Yoru_Result_t){.value = new_items, .err = YORU_OK, .message = NULL};
+    return vector->vector.size;
 }
 
 #endif // YORU_IMPLEMENTATION
-
-#endif
+#endif // __YORU_VECTOR_H__

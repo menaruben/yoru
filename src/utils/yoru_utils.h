@@ -5,4 +5,10 @@
 
 #define YORU_NAMEOF(x) #x
 
+#define YORU_TMPSTR(...) __VA_ARGS__
+
+#define YORU_OUT
+
+#define YORU_NULLABLE
+
 #endif

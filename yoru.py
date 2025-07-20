@@ -7,7 +7,7 @@ from sys import argv, exit, platform
 # however, i will probably rewrite this in C later or make a small build tool myself
 # this is just a temporary fix
 
-CC = "gcc"
+CC = "clang"
 BUILD_DIR = Path("build")
 DEMO_DIR = Path("./src/_examples")
 CFLAGS = [ "-std=c99", "-Wall" ]

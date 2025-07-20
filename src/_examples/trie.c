@@ -2,111 +2,58 @@
 #include "../yoru.h"
 #include <stdio.h>
 
-typedef struct
-{
-    int x, y;
-} Point;
-
-void safe_trie_example();
-void unsafe_trie_example();
-
 int main(void)
 {
-    printf("Safe trie example:\n");
-    safe_trie_example();
-    printf("----------------------------------------------\n");
-    printf("Unsafe trie example:\n");
-    unsafe_trie_example();
+    // Allocate root node for the trie
+    Yoru_TrieNode_t trie = {0};
+
+    // Initialize trie for int values only
+    Yoru_Error_t err = yoru_trie_init(&trie, sizeof(int));
+    if (err.type != YORU_OK)
+    {
+        printf("Failed to init trie: %s\n", err.message);
+        return 1;
+    }
+
+    // Store some integers
+    int a = 42, b = 99;
+    err = yoru_trie_set(&trie, "first", &a);
+    if (err.type != YORU_OK)
+    {
+        printf("Error putting first: %s\n", err.message);
+        yoru_trie_free(&trie);
+        return 1;
+    }
+    err = yoru_trie_set(&trie, "second", &b);
+    if (err.type != YORU_OK)
+    {
+        printf("Error putting second: %s\n", err.message);
+        yoru_trie_free(&trie);
+        return 1;
+    }
+
+    // Retrieve and print integers
+    int out = 0;
+    err = yoru_trie_get(&trie, "first", &out);
+    if (err.type == YORU_OK)
+        printf("first: %d\n", out);
+    else
+        printf("Error getting first: %s\n", err.message);
+
+    err = yoru_trie_get(&trie, "second", &out);
+    if (err.type == YORU_OK)
+        printf("second: %d\n", out);
+    else
+        printf("Error getting second: %s\n", err.message);
+
+    // Try unknown key
+    err = yoru_trie_get(&trie, "unknown", &out);
+    if (err.type != YORU_OK)
+        printf("expected error getting unknown: %s\n", err.message);
+    else
+        printf("unexpected value for unknown key: %d\n", out);
+
+    // Free trie
+    yoru_trie_free(&trie);
     return 0;
-}
-
-void safe_trie_example()
-{
-    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
-    YORU_ASSERT_NOT_NULL(allocator);
-    TrieNode_t *trie = trie_new(allocator);
-
-    Yoru_Result_t res;
-    Yoru_Error_t err;
-
-    i32 int_val = 72;
-    err = trie_put_try(trie, "int_key", &int_val, allocator);
-    if (err != YORU_OK)
-    {
-        printf("Error putting int: %s\n", yoru_error_to_string(err));
-        return;
-    }
-
-    // Store a Point
-    Point pt = {10, 20};
-    err = trie_put_try(trie, "point_key", &pt, allocator);
-    if (err != YORU_OK)
-    {
-        printf("Error putting point: %s\n", yoru_error_to_string(err));
-        return;
-    }
-
-    // Retrieve and print int (auto casts to lhs type)
-    res = trie_get_try(trie, "int_key");
-    if (res.err != YORU_OK)
-    {
-        printf("Error getting int: %s\n", yoru_error_to_string(res.err));
-        return;
-    }
-    i32 *retrieved_int = (i32 *)res.value;
-    printf("Retrieved int: %d\n", *retrieved_int);
-
-    res = trie_get_try(trie, "point_key");
-    if (res.err != YORU_OK)
-    {
-        printf("Error getting point: %s\n", yoru_error_to_string(res.err));
-        return;
-    }
-
-    Point *retrieved_pt = (Point *)res.value;
-    printf("Retrieved point: (%d, %d)\n", retrieved_pt->x, retrieved_pt->y);
-
-    // unknown key
-    res = trie_get_try(trie, "unknown_key");
-    if (res.err != YORU_OK)
-    {
-        printf("Error getting unknown key: %s\n", yoru_error_to_string(res.err));
-        return;
-    }
-
-    trie_destroy(trie, allocator);
-}
-
-void unsafe_trie_example()
-{
-    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
-    YORU_ASSERT_NOT_NULL(allocator);
-
-    // A Trie can store any type of data, it is not fixed to a specific type.
-    TrieNode_t *trie = trie_new(allocator);
-
-    // Store an int
-    i32 int_val = 72;
-    trie_put(trie, "int_key", &int_val, allocator);
-
-    // Store a Point
-    Point pt = {10, 20};
-    trie_put(trie, "point_key", &pt, allocator);
-
-    // Retrieve and print int (auto casts to lhs type)
-    i32 *retrieved_int = trie_get(i32 *, trie, "int_key");
-    YORU_ASSERT_NOT_NULL(retrieved_int);
-    printf("Retrieved int: %d\n", *retrieved_int);
-
-    // get and explicit cast to specific type
-    u8 *retrieved_int_as_u8 = trie_get_as(u8, trie, "int_key");
-    YORU_ASSERT_NOT_NULL(retrieved_int_as_u8);
-    printf("Retrieved int as u8: %c\n", *retrieved_int_as_u8);
-
-    // Retrieve and print Point
-    Point *retrieved_pt = trie_get(Point *, trie, "point_key");
-    YORU_ASSERT_NOT_NULL(retrieved_pt);
-    printf("Retrieved point: (%d, %d)\n", retrieved_pt->x, retrieved_pt->y);
-
-    trie_destroy(trie, allocator);
 }

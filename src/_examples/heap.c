@@ -1,46 +1,37 @@
 #define YORU_IMPLEMENTATION
 #include "../yoru.h"
+#include <stdio.h>
 
 #define ARRAY_SIZE 10
 
-#define INIT_ARRAY(arr)                         \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            arr[i] = (int)i;                    \
-        }                                       \
-    } while (0)
-
-#define PRINT_ARRAY(arr)                        \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            printf("%d ", arr[i]);              \
-        }                                       \
-        printf("\n");                           \
-    } while (0)
-
 int main(void)
 {
-    Yoru_Allocator_t *allocator = Yoru_HeapAllocator_new();
-    YORU_ASSERT_NOT_NULL(allocator);
+    Yoru_Slice_t arr1 = {0};
+    Yoru_Error_t err = yoru_heap_alloc(sizeof(int) * ARRAY_SIZE, &arr1);
+    if (err.type != YORU_OK)
+    {
+        fprintf(stderr, "Failed to allocate memory: %s\n", yoru_error_to_string(err.type));
+        if (err.message)
+        {
+            fprintf(stderr, "Error message: %s\n", err.message);
+        }
+        return 1;
+    }
 
-    // allocate an array on heap
-    int *arr1 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr1);
-    INIT_ARRAY(arr1);
-    PRINT_ARRAY(arr1);
+    printf("Allocated memory for %zu integers.\n", arr1.capacity / sizeof(int));
+    printf("Memory address: %p\n", arr1.data);
+    printf("Offset: %zu, Capacity: %zu\n", arr1.offset, arr1.capacity);
 
-    // allocate another array on heap
-    int *arr2 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr2);
-    INIT_ARRAY(arr2);
-    PRINT_ARRAY(arr2);
+    for (size_t i = 0; i < ARRAY_SIZE; ++i)
+    {
+        ((int *)arr1.data)[i] = (int)i;
+    }
 
-    // free the arrays
-    allocator->free(allocator->context, arr1);
-    allocator->free(allocator->context, arr2);
+    printf("Array contents:\n");
+    for (size_t i = 0; i < ARRAY_SIZE; ++i)
+    {
+        printf("%d ", ((int *)arr1.data)[i]);
+    }
+    printf("\n");
     return 0;
 }

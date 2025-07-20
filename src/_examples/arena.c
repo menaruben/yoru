@@ -1,51 +1,51 @@
 #define YORU_IMPLEMENTATION
 #include "../yoru.h"
+#include <stdio.h>
 
-#define ARRAY_SIZE 10
-
-#define ARENA_SIZE (1024 * sizeof(int))
-
-#define INIT_ARRAY(arr)                         \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            arr[i] = (int)i;                    \
-        }                                       \
-    } while (0)
-
-#define PRINT_ARRAY(arr)                        \
-    do                                          \
-    {                                           \
-        for (size_t i = 0; i < ARRAY_SIZE; i++) \
-        {                                       \
-            printf("%d ", arr[i]);              \
-        }                                       \
-        printf("\n");                           \
-    } while (0)
+#define ARENA_SIZE 1024
+#define ARRAY_LENGTH 10
 
 int main(void)
 {
-    Yoru_Allocator_t *allocator = Yoru_ArenaAllocator_new(ARENA_SIZE);
-    YORU_ASSERT_NOT_NULL(allocator);
+    Yoru_Slice_t arena = {0};
+    Yoru_Error_t err = yoru_arena_alloc(ARENA_SIZE, &arena);
+    if (err.type != YORU_OK)
+    {
+        fprintf(stderr, "Failed to allocate arena: %s\n", yoru_error_to_string(err.type));
+        return 1;
+    }
 
-    // allocate an array on arena
-    int *arr1 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr1);
-    INIT_ARRAY(arr1);
-    PRINT_ARRAY(arr1);
+    printf("Allocated arena with capacity: %zu bytes\n", arena.capacity);
+    printf("Arena address: %p\n", arena.data);
+    printf("Offset: %zu, Capacity: %zu\n", arena.offset, arena.capacity);
+    printf("Arena is from %p to %p\n", arena.data, (char *)arena.data + arena.capacity);
 
-    // allocate another array on arena
-    int *arr2 = (int *)allocator->alloc(allocator->context, sizeof(int) * ARRAY_SIZE);
-    YORU_ASSERT_NOT_NULL(arr2);
-    INIT_ARRAY(arr2);
-    PRINT_ARRAY(arr2);
+    Yoru_Slice_t arr = {0};
+    err = yoru_arena_alloc_slice(&arena, sizeof(int) * ARRAY_LENGTH, &arr);
+    if (err.type != YORU_OK)
+    {
+        fprintf(stderr, "Failed to allocate arr: %s\n", yoru_error_to_string(err.type));
+        yoru_arena_free(&arena);
+        return 1;
+    }
 
-    // allocate array too large for the arena
-    int *arr3 = (int *)allocator->alloc(allocator->context, 2 * ARENA_SIZE);
-    YORU_ASSERT_NULL(arr3); // should return NULL since the arena is too
+    printf("Allocated array slice with capacity: %zu bytes\n", arr.capacity);
+    printf("Array address: %p\n", arr.data);
+    printf("Offset: %zu, Capacity: %zu\n", arr.offset, arr.capacity);
+    printf("Array is from %p to %p\n", arr.data, (char *)arr.data + arr.capacity);
 
-    // instead of freeing each array, we free the entire arena instead :)
-    allocator->free(allocator->context, NULL); // free arena
+    for (size_t i = 0; i < ARRAY_LENGTH; ++i)
+    {
+        ((int *)arr.data)[i] = (int)i;
+    }
+
+    printf("Array contents:\n");
+    for (size_t i = 0; i < ARRAY_LENGTH; ++i)
+    {
+        printf("%d ", ((int *)arr.data)[i]);
+    }
+    printf("\n");
+
+    yoru_arena_free(&arena);
     return 0;
 }
