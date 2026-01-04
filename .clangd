@@ -1,0 +1,11 @@
+CompileFlags:
+  Add:
+    - -std=c2x
+    - -Wall
+    - -Wextra
+    - -Werror
+    - -xc
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict

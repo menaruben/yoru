@@ -1,0 +1,39 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 120
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: false
+  AfterStruct: false
+  AfterEnum: false
+  BeforeElse: false
+  AfterControlStatement: false
+  SplitEmptyFunction: false
+
+AlignAfterOpenBracket: AlwaysBreak
+BinPackParameters: false       # ensures parameters do not get packed on the same line
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: true  # allow each parameter on its own line
+AllowAllArgumentsOnNextLine: false
+
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignTrailingComments: true
+
+AllowShortBlocksOnASingleLine: Always
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: true
+SpaceBeforeParens: ControlStatements
+
+ReflowComments: false
+SortIncludes: false
+IndentCaseLabels: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+PenaltyBreakBeforeFirstCallParameter: 0
+PenaltyReturnTypeOnItsOwnLine: 0
+PenaltyBreakComment: 0
+
+IndentPPDirectives: BeforeHash
