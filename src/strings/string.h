@@ -1,7 +1,6 @@
 #ifndef __YORU_STRING_H__
 #define __YORU_STRING_H__
 
-#include "../contracts/contracts.h"
 #include "../allocators/allocator.h"
 #include "../types/types.h"
 
@@ -15,6 +14,7 @@ typedef struct Yoru_String {
 Yoru_String yoru_string_make(Yoru_Allocator *allocator);
 
 #ifdef YORU_IMPL
+  #include "../contracts/contracts.h"
 
 Yoru_String yoru_string_make(Yoru_Allocator *allocator) {
   Yoru_Guard_NotNull(allocator);

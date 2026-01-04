@@ -8,8 +8,8 @@ typedef Yoru_Allocator Yoru_ArenaAllocator;
 Yoru_ArenaAllocator   *yoru_arena_allocator_make(usize capacity);
 
 #ifdef YORU_IMPL
-
   #include <stdlib.h>
+  #include <stddef.h>
 
 Yoru_Opt __yoru_arena_allocator_alloc(anyptr ctx, usize size);
 void     __yoru_arena_allocator_dealloc(anyptr ctx, anyptr ptr);
@@ -30,9 +30,9 @@ typedef struct Yoru_ArenaAllocatorCtx {
 } Yoru_ArenaAllocatorCtx;
 
 Yoru_ArenaAllocator *yoru_arena_allocator_make(usize capacity) {
-  Yoru_ArenaAllocator    *a   = nullptr;
-  Yoru_ArenaAllocatorCtx *ctx = nullptr;
-  byte                   *mem = nullptr;
+  Yoru_ArenaAllocator    *a   = NULL;
+  Yoru_ArenaAllocatorCtx *ctx = NULL;
+  byte                   *mem = NULL;
 
   a = calloc(1, sizeof(Yoru_ArenaAllocator));
   if (!a) goto yoru_arena_allocator_make_err;
@@ -54,7 +54,7 @@ yoru_arena_allocator_make_err:
   if (ctx) free(ctx);
   if (mem) free(mem);
 
-  return nullptr;
+  return NULL;
 }
 
 Yoru_Opt __yoru_arena_allocator_alloc(anyptr ctx, usize size) {
@@ -95,7 +95,7 @@ void __yoru_arena_allocator_destroy(anyptr ctx) {
   if (!ctx) return;
   Yoru_ArenaAllocatorCtx *c = (Yoru_ArenaAllocatorCtx *)ctx;
   if (c->mem) free(c->mem);
-  c->mem      = nullptr;
+  c->mem      = NULL;
   c->offset   = 0;
   c->capacity = 0;
 }

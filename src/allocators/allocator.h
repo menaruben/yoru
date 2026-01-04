@@ -9,6 +9,9 @@
       - [ ] arena alloc.
 
     - [ ] add test/debug allocators that log or count allocated bytes
+
+    - [] add chain allocator (basically Linked List of arenas) if you try to push
+         but it has no space for that in the arena, then create a new arena and push it onto there
 */
 
 #include "../types/types.h"
@@ -46,7 +49,7 @@ Yoru_Opt yoru_allocator_alloc(Yoru_Allocator *allocator, usize size) {
   return allocator->vtable->alloc(allocator->ctx, size);
 }
 
-void yoru_allocator_free(Yoru_Allocator *allocator, anyptr ptr) {
+void yoru_allocator_dealloc(Yoru_Allocator *allocator, anyptr ptr) {
   Yoru_Guard_NotNull(allocator);
   Yoru_Guard_NotNull(allocator->vtable);
   Yoru_Guard_NotNull(allocator->vtable->dealloc);

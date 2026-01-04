@@ -44,8 +44,8 @@ int main() {
     assert(ptr.has_value);
     assert(ptr.ptr);
 
-    auto p    = (struct Person *)ptr.ptr;
-    people[i] = p;
+    struct Person *p = ptr.ptr;
+    people[i]        = p;
 
     p->name = names[rand() % name_count];
     p->age  = (rand() % 51) + 10;

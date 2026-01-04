@@ -10,6 +10,7 @@ Yoru_GlobalAllocator   yoru_global_allocator_make();
   #include "../types/types.h"
   #include <stdlib.h>
   #include <string.h>
+  #include <stddef.h>
 
 Yoru_Opt __yoru_global_allocator_alloc(anyptr ctx, usize size);
 void     __yoru_global_allocator_dealloc(anyptr ctx, anyptr ptr);
@@ -26,7 +27,7 @@ static const Yoru_AllocatorVTable __yoru_global_allocator_vtable = {
 Yoru_GlobalAllocator yoru_global_allocator_make() {
   return (Yoru_GlobalAllocator){
       .vtable = &__yoru_global_allocator_vtable,
-      .ctx    = nullptr,
+      .ctx    = NULL,
   };
 }
 

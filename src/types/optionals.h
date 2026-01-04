@@ -17,6 +17,7 @@ Yoru_Opt yoru_opt_none();
 
 #ifdef YORU_IMPL
   #include "../contracts/contracts.h"
+  #include <stddef.h>
 
 Yoru_Opt yoru_opt_some(const anyptr ptr) {
   Yoru_Guard_NotNull(ptr);
@@ -24,7 +25,7 @@ Yoru_Opt yoru_opt_some(const anyptr ptr) {
 }
 
 Yoru_Opt yoru_opt_none() {
-  return (Yoru_Opt){.ptr = nullptr, .has_value = false};
+  return (Yoru_Opt){.ptr = NULL, .has_value = false};
 }
 
 #endif
