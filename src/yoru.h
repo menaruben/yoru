@@ -6,5 +6,6 @@
 #include "allocators/_mod.h"
 #include "collections/_mod.h"
 #include "math/_mod.h"
+#include "strings/_mod.h"
 
 #endif

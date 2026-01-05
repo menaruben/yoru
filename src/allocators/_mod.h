@@ -4,5 +4,6 @@
 #include "allocator.h"
 #include "global_allocator.h"
 #include "arena_allocator.h"
+#include "sizes.h"
 
 #endif
