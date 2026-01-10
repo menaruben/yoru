@@ -3,6 +3,5 @@
 
 #include "stringview.h"
 #include "stringbuilder.h"
-#include "stringtemplate.h"
 
 #endif

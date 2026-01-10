@@ -7,10 +7,10 @@ typedef Yoru_Allocator Yoru_GlobalAllocator;
 Yoru_GlobalAllocator   yoru_global_allocator_make();
 
 #ifdef YORU_IMPL
-  #include "../types/types.h"
-  #include <stdlib.h>
-  #include <string.h>
-  #include <stddef.h>
+#  include "../types/types.h"
+#  include <stdlib.h>
+#  include <string.h>
+#  include <stddef.h>
 
 Yoru_Opt __yoru_global_allocator_alloc(anyptr ctx, usize size);
 void     __yoru_global_allocator_dealloc(anyptr ctx, anyptr ptr);

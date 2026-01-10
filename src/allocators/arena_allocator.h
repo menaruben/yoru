@@ -8,8 +8,8 @@ typedef Yoru_Allocator Yoru_ArenaAllocator;
 Yoru_ArenaAllocator   *yoru_arena_allocator_make(usize capacity);
 
 #ifdef YORU_IMPL
-  #include <stdlib.h>
-  #include <stddef.h>
+#  include <stdlib.h>
+#  include <stddef.h>
 
 Yoru_Opt __yoru_arena_allocator_alloc(anyptr ctx, usize size);
 void     __yoru_arena_allocator_dealloc(anyptr ctx, anyptr ptr);

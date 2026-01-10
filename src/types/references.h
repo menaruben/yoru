@@ -16,7 +16,7 @@ Yoru_Ref yoru_ref_make(const anyptr ptr);
 anyptr   yoru_ref_get(const Yoru_Ref *ref);
 
 #ifdef YORU_IMPL
-  #include "../contracts/contracts.h"
+#  include "../contracts/contracts.h"
 
 Yoru_Ref yoru_ref_make(const anyptr ptr) {
   Yoru_Guard_NotNull(ptr);

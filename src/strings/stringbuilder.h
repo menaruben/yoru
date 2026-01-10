@@ -24,7 +24,7 @@ bool yoru_stringbuilder_to_string(Yoru_StringBuilder *sb, Yoru_String *out_strin
 void yoru_stringbuilder_init(Yoru_Allocator *allocator, Yoru_StringBuilder *sb) {
   Yoru_Guard_NotNull(sb);
   Yoru_Guard_NotNull(allocator);
-  yoru_arraylist_init(sb, allocator);
+  yoru_arraylist_init(sb, allocator, 0); // uses default initial capacity
 }
 
 void yoru_stringbuilder_destroy(Yoru_StringBuilder *sb) {

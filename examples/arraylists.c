@@ -29,8 +29,8 @@ int main() {
   print_array(varr, "%d");
   print_array(parr, "%p");
 
-  yoru_arraylist_init(&varr.v, &allocator);
-  yoru_arraylist_init(&parr.v, &allocator);
+  yoru_arraylist_init(&varr.v, &allocator, 16);
+  yoru_arraylist_init(&parr.v, &allocator, 16);
   printf("after init:\n");
   print_array(varr, "%d");
   print_array(parr, "%p");

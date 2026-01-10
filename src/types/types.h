@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define I8_MIN INT8_MIN
 #define I8_MAX INT8_MAX
@@ -40,9 +41,35 @@ typedef int64_t       i64;
 typedef uint64_t      u64;
 typedef float         f32;
 typedef double        f64;
+typedef u8            b8;
+typedef u16           b16;
+typedef u32           b32;
+typedef u64           b64;
 typedef unsigned char byte;
 typedef size_t        usize;
 typedef void         *anyptr;
+typedef char         *cstr;
+
+typedef union Yoru_Any {
+  i8     i8;
+  u8     u8;
+  i16    i16;
+  u16    u16;
+  i32    i32;
+  u32    u32;
+  i64    i64;
+  u64    u64;
+  f32    f32;
+  f64    f64;
+  b8     b8;
+  b16    b16;
+  b32    b32;
+  b64    b64;
+  byte   byte;
+  usize  usize;
+  anyptr anyptr;
+  cstr   cstr;
+} Yoru_Any;
 
 #define PTR_SIZE sizeof(anyptr)
 

@@ -14,9 +14,9 @@ BraceWrapping:
   SplitEmptyFunction: false
 
 AlignAfterOpenBracket: AlwaysBreak
-BinPackParameters: false       # ensures parameters do not get packed on the same line
+BinPackParameters: false # ensures parameters do not get packed on the same line
 BinPackArguments: false
-AllowAllParametersOfDeclarationOnNextLine: true  # allow each parameter on its own line
+AllowAllParametersOfDeclarationOnNextLine: true # allow each parameter on its own line
 AllowAllArgumentsOnNextLine: false
 
 AlignConsecutiveAssignments: true
@@ -36,4 +36,4 @@ PenaltyBreakBeforeFirstCallParameter: 0
 PenaltyReturnTypeOnItsOwnLine: 0
 PenaltyBreakComment: 0
 
-IndentPPDirectives: BeforeHash
+IndentPPDirectives: AfterHash

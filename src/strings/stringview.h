@@ -18,9 +18,9 @@ bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_String *
 void yoru_string_destroy(Yoru_String *s);
 
 #ifdef YORU_IMPL
-  #include "../contracts/contracts.h"
-  #include <string.h>
-  #include <assert.h>
+#  include "../contracts/contracts.h"
+#  include <string.h>
+#  include <assert.h>
 
 bool yoru_string_make(Yoru_Allocator *allocator, usize length, Yoru_String *out_string) {
   Yoru_Guard_NotNull(allocator);

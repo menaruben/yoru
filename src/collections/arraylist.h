@@ -21,14 +21,14 @@
     Yoru_Allocator *allocator;                                                                                         \
   }
 
-#define yoru_arraylist_init(__arr_ptr, __allocator_ptr)                                                                \
+#define yoru_arraylist_init(__arr_ptr, __allocator_ptr, __capacity)                                                    \
   do {                                                                                                                 \
     Yoru_Opt maybe_items =                                                                                             \
         yoru_allocator_alloc((__allocator_ptr), YORU_ARRAYLIST_INITIAL_CAPACITY * sizeof((__arr_ptr)->items[0]));      \
     assert(maybe_items.has_value && "could not allocate memory for arraylist");                                        \
     (__arr_ptr)->items     = maybe_items.ptr;                                                                          \
     (__arr_ptr)->size      = 0;                                                                                        \
-    (__arr_ptr)->capacity  = YORU_ARRAYLIST_INITIAL_CAPACITY;                                                          \
+    (__arr_ptr)->capacity  = ((__capacity) == 0) ? YORU_ARRAYLIST_INITIAL_CAPACITY : (__capacity);                     \
     (__arr_ptr)->allocator = __allocator_ptr;                                                                          \
   } while (0);
 
