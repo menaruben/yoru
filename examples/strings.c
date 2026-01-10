@@ -29,10 +29,13 @@ int main() {
   s2.data[0] = 'h';
   s2.data[1] = 'i';
 
-  printf("s1 = `%.*s`\n", (int)s1.length, s1.data);
-  printf("transformed s1_copy = `%.*s`\n", (int)s1_copy.length, s1_copy.data);
-  printf("s1_copy_substr = `%.*s`\n", (int)s1_copy_substr.length, s1_copy_substr.data);
-  printf("s2 = `%.*s`\n", (int)s2.length, s2.data);
+  // you can print the strings by using the string fmt (which is just %.*s) and the args which are the length as int and the ptr to data
+  // you need to print them like that because the strings are NOT null terminated in Yoru because the length already provides the length
+  // information... this is done so you can also print binary data in the same way and therefore keep consistency
+  printf("s1 = `" Yoru_String_Fmt "`\n", Yoru_String_Fmt_Args(&s1));
+  printf("transformed s1_copy = `" Yoru_String_Fmt "`\n", Yoru_String_Fmt_Args(&s1_copy));
+  printf("s1_copy_substr = `" Yoru_String_Fmt "`\n", Yoru_String_Fmt_Args(&s1_copy_substr));
+  printf("s2 = `" Yoru_String_Fmt "`\n", Yoru_String_Fmt_Args(&s2));
 
   yoru_string_destroy(&s1);
   yoru_string_destroy(&s2);

@@ -22,6 +22,7 @@
 
 /* ============================================================
    MODULE: Types
+   provides common typedefs for fixed size types
    ============================================================ */
 
 #define I8_MIN INT8_MIN
@@ -65,6 +66,7 @@ typedef char         *cstr;
 
 /* ============================================================
    MODULE: Optionals
+   provides the concept of an optional value
    ============================================================ */
 
 /// @brief Yoru_Opt is a struct that holds a pointer that might be NULL
@@ -92,7 +94,7 @@ Yoru_Opt yoru_opt_none() {
    MODULE: References
    ============================================================ */
 
-/// @brief Represents a ptr that CANNOT be null. (unless youre silly! ^^)
+/// @brief Represents a ptr that MUST NOT be null. (unless youre silly! ^^)
 /// Please make sure to use the provided constructor `yoru_ref_make` to make a new ref
 /// and use `yoru_ref_get` to get the actual ptr contained in the ref struct.
 /// If in any way the ptr is null when creating the ref or getting the ptr it will fail
@@ -101,8 +103,12 @@ typedef struct Yoru_Ref {
   const anyptr ptr;
 } Yoru_Ref;
 
+/// @brief Creates a reference
 Yoru_Ref yoru_ref_make(const anyptr ptr);
-anyptr   yoru_ref_get(const Yoru_Ref *ref);
+
+/// @brief Gets the pointer to the non null reference. However, if it were
+/// to be null then the program would crash.
+anyptr yoru_ref_get(const Yoru_Ref *ref);
 
 #ifdef YORU_IMPL
 Yoru_Ref yoru_ref_make(const anyptr ptr) {
@@ -126,6 +132,8 @@ typedef void (*Yoru_Allocator_DeAlloc_Func)(anyptr ctx, anyptr ptr);
 typedef Yoru_Opt (*Yoru_Allocator_ReAlloc_Func)(anyptr ctx, usize old_size, anyptr old_ptr, usize new_size);
 typedef void (*Yoru_Allocator_Destroy_Func)(anyptr ctx);
 
+/// @brief Functions that an allocator must implement.
+/// If a function would be a no-op, they would still need to be provided.
 typedef struct Yoru_AllocatorVTable {
   Yoru_Allocator_Alloc_Func   alloc;
   Yoru_Allocator_DeAlloc_Func dealloc;
@@ -133,15 +141,23 @@ typedef struct Yoru_AllocatorVTable {
   Yoru_Allocator_Destroy_Func destroy;
 } Yoru_AllocatorVTable;
 
+/// @brief Allocator Interface
 typedef struct Yoru_Allocator {
   const Yoru_AllocatorVTable *vtable;
   anyptr                      ctx;
 } Yoru_Allocator;
 
+/// @brief Allocates memory using the alloc function inside the allocators vtable
 Yoru_Opt yoru_allocator_alloc(Yoru_Allocator *allocator, usize size);
-void     yoru_allocator_dealloc(Yoru_Allocator *allocator, anyptr ptr);
+
+/// @brief De-Allocates/Frees memory using the dealloc function inside the allocators vtable
+void yoru_allocator_dealloc(Yoru_Allocator *allocator, anyptr ptr);
+
+/// @brief Re-Allocates memory using the realloc function inside the allocators vtable
 Yoru_Opt yoru_allocator_realloc(Yoru_Allocator *allocator, usize old_size, anyptr old_ptr, usize new_size);
-void     yoru_allocator_destroy(Yoru_Allocator *allocator);
+
+// @brief Destroys the allocator instance using the destroy function iside the allocators vtable
+void yoru_allocator_destroy(Yoru_Allocator *allocator);
 
 #ifdef YORU_IMPL
 Yoru_Opt yoru_allocator_alloc(Yoru_Allocator *allocator, usize size) {
@@ -175,6 +191,8 @@ void yoru_allocator_destroy(Yoru_Allocator *allocator) {
 
 /* ============================================================
    MODULE: GlobalAllocator
+   provides a global allocator that is just a wrapper around
+   calloc and free that fits the ALlocator interface
    ============================================================ */
 
 typedef Yoru_Allocator Yoru_GlobalAllocator;
@@ -229,10 +247,17 @@ void __yoru_global_allocator_destroy(anyptr ctx) {
 
 /* ============================================================
    MODULE: ArenaAllocator
+   provides an arena allocator that allocates the entire
+   capacity once when creating the allocator.
+
+   If you do not wish to allocate everything at once, please
+   take a look at the `VirtualArenaAllocator`
    ============================================================ */
 
 typedef Yoru_Allocator Yoru_ArenaAllocator;
-Yoru_ArenaAllocator   *yoru_arena_allocator_make(usize capacity);
+
+/// @brief Creates an arena allocator
+Yoru_ArenaAllocator *yoru_arena_allocator_make(usize capacity);
 
 #ifdef YORU_IMPL
 Yoru_Opt __yoru_arena_allocator_alloc(anyptr ctx, usize size);
@@ -259,25 +284,24 @@ Yoru_ArenaAllocator *yoru_arena_allocator_make(usize capacity) {
   byte                   *mem = NULL;
 
   a = calloc(1, sizeof(Yoru_ArenaAllocator));
-  if (!a) goto yoru_arena_allocator_make_err;
+  if (!a) goto err;
   a->vtable = &__yoru_arena_allocator_vtable;
 
   ctx = calloc(1, sizeof(Yoru_ArenaAllocatorCtx));
-  if (!ctx) goto yoru_arena_allocator_make_err;
+  if (!ctx) goto err;
   a->ctx = (anyptr)ctx;
 
   mem = (byte *)calloc(1, capacity);
-  if (!mem) goto yoru_arena_allocator_make_err;
+  if (!mem) goto err;
   ctx->mem      = mem;
   ctx->offset   = 0;
   ctx->capacity = capacity;
   return a;
 
-yoru_arena_allocator_make_err:
+err:
   if (a) free(a);
   if (ctx) free(ctx);
   if (mem) free(mem);
-
   return NULL;
 }
 
@@ -310,7 +334,7 @@ Yoru_Opt __yoru_arena_allocator_realloc(anyptr ctx, usize old_size, anyptr old_p
      becuase the arena might not be able to fit everything with the new ptr in the arena and we dont
      know in the arena ctx where which ptr starts! otherwise we would have to keep track of them here.
 
-     -> maybe we could handle reallocs like normal allocations instead and just push to the arena?
+     -> TODO: maybe we could handle reallocs like normal allocations instead and just push to the arena?
   */
   return yoru_opt_none();
 }
@@ -328,6 +352,11 @@ void __yoru_arena_allocator_destroy(anyptr ctx) {
 #if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(_WIN32) || defined(_WIN32)
 /* ============================================================
    MODULE: VirtualMemory
+   provides an interface to work with virtual memory on platforms such as
+     - linux
+     - macos
+     - windows
+     -> if your platform is not supported you can open an issue or open a pull request! :)
    ============================================================ */
 
 typedef struct Yoru_Vmem_Ctx {
@@ -471,11 +500,20 @@ static inline bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx) {
 #    endif // Platform Check
 
 #  endif // YORU_IMPL
-#endif   // Platform Check
+#else
+#  error "platform not supported yet"
+#endif // Platform Check
 
 #if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(_WIN32)
 /* ============================================================
    MODULE: VirtualArenaAllocator
+   provides an arena allocator that commits pages in a reserved
+   address space instead of allocating the entire capacity when
+   creating the allocator (as is the case with `ArenaAllocator`)
+
+   Makes use of the VirtualMemory module and therefore is only
+   supported by platforms where the VirtualMemory module
+   is defined.
    ============================================================ */
 
 typedef Yoru_Allocator      Yoru_VirtualArenaAllocator;
@@ -597,6 +635,33 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
 
 /* ============================================================
    MODULE: ArrayList
+   provides an interface to create dynamic arrays by for example
+   creating a new typedef for your ArrayList type or add
+   it as a field in a struct:
+   ```c
+   typedef Yoru_ArrayList_T(int) IntArrayList;
+
+   // ... oooor you could also just add it as a field inside a struct,
+   // typedef struct {
+   //   Yoru_ArrayList_T(int) values;
+   // } OtherIntArrayList;
+
+   void my_func() {
+     Yoru_Allocator allocator = yoru_global_allocator_make();
+     IntArrayList xs = {0};
+
+     // you can just pass 0 as initial capacity and it will use the default
+     yoru_arraylist_init(&xs, &allocator, 16); 
+     for (usize i = 0; i < 128; ++i) {
+       yoru_arraylist_append(&xs, i);
+     }
+
+     // do something
+
+     yoru_arraylist_destroy(&xs); // destroys arraylist with allocator that `owns` it
+   }
+   ```
+   
    TODO:
      - find a way to handle errors better
    ============================================================ */
@@ -673,19 +738,54 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
 
 /* ============================================================
    MODULE: StringView
+   provides a mutable, sized, non-nulltermianted string type
+
+   When printing the strings, make sure to use the `Yoru_String_Fmt`
+   and concatenate the string in the printf and use the
+   `Yoru_String_Fmt_Args` to pass the corresponding args.
+   This is needed because the data is not null terminated so we
+   have to pass the length too. Here is an example:
+   ```c
+   int main() {
+     Yoru_GlobalAllocator allocator = yoru_global_allocator_make();
+
+     Yoru_String message = {0};
+     cstr m = "hello world!";
+     if (!yoru_string_from_str(&allocator, m, sizeof(m)-1, &message))
+       return 1;
+
+     printf("My string: `" Yoru_String_Fmt "`\n", Yoru_String_Fmt_Args(&message));
+     return 0;
+   }
+   ```
    ============================================================ */
 
-/// @brief Immutable and sized NON-NULLTERMINATED c-string
+#define Yoru_String_Fmt "%.*s"
+
+#define Yoru_String_Fmt_Args(__str_ptr) (int)(__str_ptr)->length, (__str_ptr)->data
+
+/// @brief mutable and sized NON-NULLTERMINATED string
 typedef struct Yoru_String {
   u8             *data;
   usize           length;
   Yoru_Allocator *allocator;
 } Yoru_String;
 
+/// @brief Creates an empty string of specific length
 bool yoru_string_make(Yoru_Allocator *allocator, usize length, Yoru_String *out_string);
+
+/// @brief Creates a string from a c-string of a specific length and copies the given string into the data ptr
 bool yoru_string_from_str(Yoru_Allocator *allocator, const char *s, usize length, Yoru_String *out_string);
+
+/// @brief Creates a DEEP-copy of a string
 bool yoru_string_copy(Yoru_Allocator *allocator, Yoru_String *src, Yoru_String *dest);
+
+/// @brief Creates a new string which is the substring of a given string
+/// @note Changing values in the substring also changes values in the "complete" string as it
+/// is just a small window/view of the original string
 bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_String *out_string);
+
+/// @brief Deallocates the string using the allocator that owns it
 void yoru_string_destroy(Yoru_String *s);
 
 #ifdef YORU_IMPL
@@ -750,15 +850,31 @@ void yoru_string_destroy(Yoru_String *s) {
 
 /* ============================================================
    MODULE: StringBuilder
+   provides a way to 'build' strings into a dynamic array
+   by appending char, c-strings or Yoru_String.
+
+   TOOD:
+     - add a `yoru_stringbuilder_append_format(format, ...)` instead of char and cstr func
    ============================================================ */
 
 typedef Yoru_ArrayList_T(u8) Yoru_StringBuilder;
 
+/// @brief Initializese the stringbuilder (creating the dynamic array)
 void yoru_stringbuilder_init(Yoru_Allocator *allocator, Yoru_StringBuilder *sb);
+
+/// @brief Destroys / Deallocates the string builder
 void yoru_stringbuilder_destroy(Yoru_StringBuilder *sb);
+
+/// @brief Appends a char to the stringbuilder
 bool yoru_stringbuilder_append_char(Yoru_StringBuilder *sb, char c);
+
+/// @brief Appends a c-string of a given length to the stringbuilder
 bool yoru_stringbuilder_append_cstr(Yoru_StringBuilder *sb, const char *, usize length);
+
+/// @brief Appends a Yoru_String to the stringbuilder
 bool yoru_stringbuilder_append_string(Yoru_StringBuilder *sb, const Yoru_String *s);
+
+/// @brief Creates a Yoru_String from the stringbuider
 bool yoru_stringbuilder_to_string(Yoru_StringBuilder *sb, Yoru_String *out_string);
 
 #ifdef YORU_IMPL
@@ -781,6 +897,7 @@ bool yoru_stringbuilder_to_string(Yoru_StringBuilder *sb, Yoru_String *out_strin
   Yoru_String temp_res = {0};
   if (!yoru_string_from_str(sb->allocator, (const char *)sb->items, sb->size, &temp_res)) return false;
   if (!yoru_string_copy(sb->allocator, &temp_res, out_string)) return false;
+  yoru_string_destroy(&temp_res);
   return true;
 }
 
@@ -819,31 +936,58 @@ bool yoru_stringbuilder_append_string(Yoru_StringBuilder *sb, const Yoru_String 
 
 /* ============================================================
    MODULE: FileSystem
+   provides a small interface to interact with filesystem
    ============================================================ */
 
 Yoru_String yoru_read_file(Yoru_Allocator *allocator, const char *filepath);
+Yoru_String yoru_read_file_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes);
+usize       yoru_get_file_size(const char *filepath);
 
 #ifdef YORU_IMPL
 Yoru_String yoru_read_file(Yoru_Allocator *allocator, const char *filepath) {
   assert(allocator);
   assert(filepath);
+  usize size = yoru_get_file_size(filepath);
+  return yoru_read_file_exact(allocator, filepath, 0, size);
+}
 
-  Yoru_String res = {0};
+Yoru_String yoru_read_file_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes) {
+  assert(allocator);
+  assert(filepath);
 
-  FILE *file = fopen(filepath, "r");
+  Yoru_String res  = {0};
+  FILE       *file = fopen(filepath, "rb");
   if (!file) goto cleanup;
 
   fseek(file, 0, SEEK_END);
-  usize size = ftell(file);
+  usize end_pos   = ftell(file);
+  usize file_size = end_pos - offset_bytes;
+  if (offset_bytes >= file_size) goto cleanup;
 
-  if (!yoru_string_make(allocator, size, &res)) goto cleanup;
+  // make sure that we do not try to read more than we can
+  usize read_size = file_size - offset_bytes;
+  if (read_size > max_bytes) read_size = max_bytes;
+  if (!yoru_string_make(allocator, read_size, &res)) goto cleanup;
+
+  fseek(file, offset_bytes, SEEK_SET);
   fread(res.data, sizeof(u8), res.length, file);
   fclose(file);
   return res;
 
 cleanup:
   if (file) fclose(file);
+  res.data = NULL;
   return res;
+}
+
+usize yoru_get_file_size(const char *filepath) {
+  assert(filepath);
+  FILE *file = fopen(filepath, "r");
+  if (!file) return 0;
+  fseek(file, 0, SEEK_END);
+  usize size = ftell(file);
+  fclose(file);
+  return size;
 }
 #endif // YORU_IMPL
 
