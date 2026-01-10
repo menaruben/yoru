@@ -991,4 +991,109 @@ usize yoru_get_file_size(const char *filepath) {
 }
 #endif // YORU_IMPL
 
-#endif // __YORU_H__
+#ifdef YORU_INCLUDE_EXPERIMENTAL
+/* ============================================================
+   MODULE: CrashHandler
+   provides a **VERY EXPERIMENTAL** way to install a crash handler
+   for various signals to for example find out where a segfault
+   exactly occurred... Currently only supported for
+   - x86_64
+
+   You probably need to compile your program with the
+   `-g` and `-no-pie` flags though and is only ever
+   useful in debugging scenarios. Example:
+   ```c
+   #define YORU_IMPL
+   #define YORU_INCLUDE_EXPERIMENTAL
+   #include "../yoru.h"
+   
+   #include <stdio.h>
+   #include <stddef.h>
+   
+   int main() {
+     yoru_install_crashhandler();
+   
+     char *null_ptr = NULL;
+     printf("%c\n", *null_ptr);
+     return 0;
+   }
+   ```
+   compile and run:
+   ```
+   $ gcc crashhandler.c -no-pie -g
+   $ ./a.out
+   Crash: signal 11 (Segmentation fault) at address (nil)
+   Instruction pointer: 0x403583
+   Top frame: main at /.../crashhandler.c:12
+   ```
+   Looks really nice on posix but on windows you will just get something like:
+   ```
+   Crash: Windows exception at address 00007FF746329A3F
+   ```
+   but there is probably a way to do something similar :)
+   ============================================================ */
+
+void yoru_install_crashhandler();
+
+#  ifdef YORU_IMPL
+#    if defined(_WIN32)
+
+static LONG WINAPI __yoru_win_exception_handler(EXCEPTION_POINTERS *ep) {
+  void *addr = ep->ExceptionRecord->ExceptionAddress;
+  fprintf(stderr, "Crash: Windows exception at address %p\n", addr);
+  fflush(stderr);
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+void yoru_install_crashhandler() {
+  SetUnhandledExceptionFilter(__yoru_win_exception_handler);
+}
+
+#    elif (defined(__linux__) || (defined(__APPLE__) || defined(__MACH__))) && defined(__x86_64__)
+#      include <signal.h>
+#      include <sys/ucontext.h>
+#      include <ucontext.h>
+
+static void __yoru_posix_crashhandler(int sig, siginfo_t *info, anyptr ctx);
+
+void yoru_install_crashhandler() {
+  struct sigaction sa;
+  sa.sa_sigaction = __yoru_posix_crashhandler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
+
+  sigaction(SIGSEGV, &sa, NULL);
+  sigaction(SIGABRT, &sa, NULL);
+  sigaction(SIGFPE, &sa, NULL);
+  sigaction(SIGILL, &sa, NULL);
+  sigaction(SIGBUS, &sa, NULL);
+}
+
+static void __yoru_posix_crashhandler(int sig, siginfo_t *info, anyptr ctx) {
+  void *fault_addr = info ? info->si_addr : NULL;
+  fprintf(stderr, "Crash: signal %d (%s) at address %p\n", sig, strsignal(sig), fault_addr);
+  ucontext_t *uctx = (ucontext_t *)ctx;
+  anyptr      rip  = (anyptr)uctx->uc_mcontext.gregs[16]; // REG_RIP = 16
+  fprintf(stderr, "Instruction pointer: %p\n", rip);
+
+  usize   exe_len = 1024;
+  char    exe_path[exe_len]; // should be enough i think ^^
+  ssize_t len = readlink("/proc/self/exe", exe_path, exe_len);
+  if (len > 0) {
+    exe_path[len % exe_len] = 0;
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd), "addr2line -f -p -e %s %p 2>/dev/null", exe_path, rip);
+    fprintf(stderr, "Top frame: ");
+    fflush(stderr);
+    system(cmd);
+  }
+
+  fflush(stderr);
+  _exit(1);
+}
+#    else
+#      error "platform not supported"
+#    endif // Platform Check
+#  endif   // YORU_IMPL
+#endif     // YORU_INCLUDE_EXPERIMENTAL
+#endif     // __YORU_H__
