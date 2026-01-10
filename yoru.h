@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#ifdef __linux__
+#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
 #  include <sys/mman.h>
 #  include <unistd.h>
 #endif
@@ -321,8 +321,13 @@ void __yoru_arena_allocator_destroy(anyptr ctx) {
 }
 #endif // YORU_IMPL
 
+#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
 /* ============================================================
    MODULE: VirtualMemory
+   TODO:
+     - add support for more platforms:
+       - [ ] windows (minimum)
+       - [ ] others that may be needed?
    ============================================================ */
 
 typedef struct Yoru_Vmem_Ctx {
@@ -337,17 +342,17 @@ bool  yoru_vmem_reserve(usize size, Yoru_Vmem_Ctx *out_ctx);
 bool  yoru_vmem_commit(Yoru_Vmem_Ctx *ctx, usize size);
 bool  yoru_vmem_free(Yoru_Vmem_Ctx *ctx);
 
-#ifdef YORU_IMPL
+#  ifdef YORU_IMPL
 usize yoru_align_up(usize x, usize alignment) {
   return (x + alignment - 1) & ~(alignment - 1);
 }
 
 usize yoru_get_page_size() {
-#  ifdef __linux__
+#    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   return (usize)sysconf(_SC_PAGE_SIZE);
-#  else
-#    error "platform not supported yet"
-#  endif
+#    else
+#      error "platform not supported yet"
+#    endif
 }
 
 static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx);
@@ -355,25 +360,25 @@ static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx);
 bool yoru_vmem_reserve(usize size, Yoru_Vmem_Ctx *out_ctx) {
   assert(out_ctx && "must not be null");
 
-#  ifdef __linux__
+#    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   return __yoru_vmem_reserve_linux(size, out_ctx);
-#  else
-#    error "platform not supported yet"
-#  endif
+#    else
+#      error "platform not supported yet"
+#    endif
 }
 
 bool yoru_vmem_commit(Yoru_Vmem_Ctx *ctx, usize size) {
   assert(ctx && "must not be null");
   assert(ctx->base && "must not be null");
-#  ifdef __linux__
+#    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   usize size_aligned = yoru_align_up(size, yoru_get_page_size());
   int   err          = mprotect((u8 *)ctx->base + ctx->commit_pos, size_aligned, PROT_READ | PROT_WRITE);
   if (err != 0) return false;
   ctx->commit_pos += size_aligned;
   return true;
-#  else
-#    error "platform not supported yet"
-#  endif
+#    else
+#      error "platform not supported yet"
+#    endif
 }
 
 static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx);
@@ -381,14 +386,14 @@ static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx);
 bool yoru_vmem_free(Yoru_Vmem_Ctx *ctx) {
   assert(ctx && "must not be null");
   assert(ctx->base && "must not be null");
-#  ifdef __linux
+#    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   return __yoru_vmem_free_linux(ctx);
-#  else
-#    error "platform not supported yet"
-#  endif
+#    else
+#      error "platform not supported yet"
+#    endif
 }
 
-#  ifdef __linux__
+#    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
 static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx) {
   anyptr ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
   if (ptr == MAP_FAILED) {
@@ -412,18 +417,24 @@ static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx) {
   ctx->addr_space_size = 0;
   return true;
 }
-#  endif
+#    endif
 
-#endif // YORU_IMPL
+#  endif // YORU_IMPL
+#endif   // Platform Check
 
+#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
 /* ============================================================
    MODULE: VirtualArenaAllocator
+   TODO:
+        - add support for more platforms:
+       - [ ] windows (minimum)
+       - [ ] others that may be needed?
    ============================================================ */
 
 typedef Yoru_Allocator      Yoru_VirtualArenaAllocator;
 Yoru_VirtualArenaAllocator *yoru_virtual_arena_allocator_make(usize capacity);
 
-#ifdef YORU_IMPL
+#  ifdef YORU_IMPL
 Yoru_Opt __yoru_virtual_arena_allocator_alloc(anyptr ctx, usize size);
 void     __yoru_virtual_arena_allocator_dealloc(anyptr ctx, anyptr ptr);
 Yoru_Opt __yoru_virtual_arena_allocator_realloc(anyptr ctx, usize old_size, anyptr old_ptr, usize new_size);
@@ -441,11 +452,11 @@ typedef struct Yoru_VirtualArenaAllocatorCtx {
   Yoru_Vmem_Ctx *vmem_ctx;
 } Yoru_VirtualArenaAllocatorCtx;
 
-Yoru_ArenaAllocator *yoru_virtual_arena_allocator_make(usize capacity) {
-  Yoru_ArenaAllocator *a = calloc(1, sizeof *a);
+Yoru_VirtualArenaAllocator *yoru_virtual_arena_allocator_make(usize capacity) {
+  Yoru_VirtualArenaAllocator *a = calloc(1, sizeof(Yoru_VirtualArenaAllocator));
   if (!a) return NULL;
 
-  Yoru_VirtualArenaAllocatorCtx *ctx = calloc(1, sizeof *ctx);
+  Yoru_VirtualArenaAllocatorCtx *ctx = calloc(1, sizeof(Yoru_VirtualArenaAllocatorCtx));
   if (!ctx) goto err;
 
   Yoru_Vmem_Ctx *vmem_ctx = calloc(1, sizeof *vmem_ctx);
@@ -523,12 +534,11 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
   yoru_vmem_free(c->vmem_ctx);
   free(c->vmem_ctx);
   free(c);
-  c->offset                    = 0;
-  c->vmem_ctx->base            = NULL;
-  c->vmem_ctx->commit_pos      = 0;
-  c->vmem_ctx->addr_space_size = 0;
+  c->offset   = 0;
+  c->vmem_ctx = NULL;
 }
-#endif // YORU_IMPL
+#  endif // YORU_IMPL
+#endif   // Platform Check
 
 #define YORU_B(_n) ((usize)1 * (_n))
 #define YORU_KB(_n) ((_n) * YORU_B(1000))    // 1 KB = 1000 bytes
@@ -540,6 +550,8 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
 
 /* ============================================================
    MODULE: ArrayList
+   TODO:
+     - find a way to handle errors better
    ============================================================ */
 
 #define YORU_ARRAYLIST_INITIAL_CAPACITY (16)
