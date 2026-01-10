@@ -407,7 +407,7 @@ bool yoru_vmem_free(Yoru_Vmem_Ctx *ctx) {
 static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx) {
   anyptr ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
   if (ptr == MAP_FAILED) {
-    ctx->basei           = NULL;
+    ctx->base            = NULL;
     ctx->commit_pos      = 0;
     ctx->addr_space_size = 0;
     return false;
