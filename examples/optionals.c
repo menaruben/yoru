@@ -1,5 +1,5 @@
 #define YORU_IMPL
-#include "../src/yoru.h"
+#include "../yoru.h"
 
 #include <stdlib.h>
 #include <assert.h>
@@ -10,7 +10,7 @@ Yoru_Opt get_maybe_int();
 
 int main() {
   srand(time(NULL));
-  auto maybe_int = get_maybe_int();
+  Yoru_Opt maybe_int = get_maybe_int();
 
   if (maybe_int.has_value) {
     assert(maybe_int.ptr);
@@ -28,7 +28,7 @@ int main() {
 Yoru_Opt get_maybe_int() {
   int x = rand() % 100;
 
-  if (x < 80) {
+  if (x < 50) {
     int *x = malloc(sizeof(int));
     assert(x && "failed to alloc mem for x");
     *x = 69;

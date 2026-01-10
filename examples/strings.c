@@ -1,5 +1,5 @@
 #define YORU_IMPL
-#include "../src/yoru.h"
+#include "../yoru.h"
 
 #include <stdio.h>
 

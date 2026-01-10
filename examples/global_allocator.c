@@ -1,5 +1,5 @@
 #define YORU_IMPL
-#include "../src/yoru.h"
+#include "../yoru.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -16,13 +16,13 @@ int main() {
   assert(ptr.has_value);
   assert(ptr.ptr);
 
-  auto p = (struct Person *)ptr.ptr;
+  struct Person *p = ptr.ptr;
   p->age = 22;
   p->name = "ruby";
 
   printf("name: %s\n", p->name);
   printf("age: %zu\n", p->age);
 
-  yoru_allocator_free(&allocator, p);
+  yoru_allocator_dealloc(&allocator, p);
   return 0;
 }

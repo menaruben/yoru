@@ -1,5 +1,5 @@
 #define YORU_IMPL
-#include "../src/yoru.h"
+#include "../yoru.h"
 
 #include <stdio.h>
 
@@ -20,7 +20,7 @@ int main() {
   Yoru_String res = {0};
   if (!yoru_stringbuilder_to_string(&sb, &res)) { return 1; }
 
-  printf("res = `%.*s`", (int)res.length, res.data);
+  printf("res = `%.*s`\n", (int)res.length, res.data);
 
   yoru_stringbuilder_destroy(&sb);
   return 0;
