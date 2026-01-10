@@ -426,7 +426,7 @@ static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx) {
 /* ============================================================
    MODULE: VirtualArenaAllocator
    TODO:
-        - add support for more platforms:
+     - add support for more platforms:
        - [ ] windows (minimum)
        - [ ] others that may be needed?
    ============================================================ */
