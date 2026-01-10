@@ -16,6 +16,10 @@
 #  include <unistd.h>
 #endif
 
+#if defined(_WIN32)
+#  include <windows.h>
+#endif
+
 /* ============================================================
    MODULE: Types
    ============================================================ */
@@ -321,13 +325,9 @@ void __yoru_arena_allocator_destroy(anyptr ctx) {
 }
 #endif // YORU_IMPL
 
-#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
+#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(_WIN32) || defined(_WIN32)
 /* ============================================================
    MODULE: VirtualMemory
-   TODO:
-     - add support for more platforms:
-       - [ ] windows (minimum)
-       - [ ] others that may be needed?
    ============================================================ */
 
 typedef struct Yoru_Vmem_Ctx {
@@ -350,44 +350,54 @@ usize yoru_align_up(usize x, usize alignment) {
 usize yoru_get_page_size() {
 #    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   return (usize)sysconf(_SC_PAGE_SIZE);
+#    elif defined(_WIN32)
+  SYSTEM_INFO sysinfo = {0};
+  GetSystemInfo(&sysinfo);
+  return (usize)sysinfo.dwPageSize;
 #    else
 #      error "platform not supported yet"
 #    endif
 }
 
 static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx);
+static inline bool __yoru_vmem_reserve_windows(usize size, Yoru_Vmem_Ctx *ctx);
 
 bool yoru_vmem_reserve(usize size, Yoru_Vmem_Ctx *out_ctx) {
   assert(out_ctx && "must not be null");
-
 #    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   return __yoru_vmem_reserve_linux(size, out_ctx);
+#    elif defined(_WIN32)
+  return __yoru_vmem_reserve_windows(size, out_ctx);
 #    else
 #      error "platform not supported yet"
 #    endif
 }
 
+bool __yoru_vmem_commit_linux(Yoru_Vmem_Ctx *ctx, usize size);
+bool __yoru_vmem_commit_windows(Yoru_Vmem_Ctx *ctx, usize size);
+
 bool yoru_vmem_commit(Yoru_Vmem_Ctx *ctx, usize size) {
   assert(ctx && "must not be null");
   assert(ctx->base && "must not be null");
 #    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
-  usize size_aligned = yoru_align_up(size, yoru_get_page_size());
-  int   err          = mprotect((u8 *)ctx->base + ctx->commit_pos, size_aligned, PROT_READ | PROT_WRITE);
-  if (err != 0) return false;
-  ctx->commit_pos += size_aligned;
-  return true;
+  return __yoru_vmem_commit_linux(ctx, size);
+#    elif defined(_WIN32)
+  return __yoru_vmem_commit_windows(ctx, size);
 #    else
 #      error "platform not supported yet"
 #    endif
 }
 
 static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx);
+static inline bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx);
 
 bool yoru_vmem_free(Yoru_Vmem_Ctx *ctx) {
   assert(ctx && "must not be null");
   assert(ctx->base && "must not be null");
 #    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   return __yoru_vmem_free_linux(ctx);
+#    elif defined(_WIN32)
+  return __yoru_vmem_free_windows(ctx);
 #    else
 #      error "platform not supported yet"
 #    endif
@@ -397,7 +407,7 @@ bool yoru_vmem_free(Yoru_Vmem_Ctx *ctx) {
 static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx) {
   anyptr ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
   if (ptr == MAP_FAILED) {
-    ctx->base;
+    ctx->basei           = NULL;
     ctx->commit_pos      = 0;
     ctx->addr_space_size = 0;
     return false;
@@ -406,6 +416,14 @@ static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx) {
   ctx->base            = ptr;
   ctx->commit_pos      = 0;
   ctx->addr_space_size = size;
+  return true;
+}
+
+bool __yoru_vmem_commit_linux(Yoru_Vmem_Ctx *ctx, usize size) {
+  usize size_aligned = yoru_align_up(size, yoru_get_page_size());
+  int   err          = mprotect((u8 *)ctx->base + ctx->commit_pos, size_aligned, PROT_READ | PROT_WRITE);
+  if (err != 0) return false;
+  ctx->commit_pos += size_aligned;
   return true;
 }
 
@@ -419,16 +437,45 @@ static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx) {
 }
 #    endif
 
+#    if defined(_WIN32)
+static inline bool __yoru_vmem_reserve_windows(usize size, Yoru_Vmem_Ctx *ctx) {
+  anyptr ptr = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
+  if (!ptr) {
+    ctx->base            = NULL;
+    ctx->commit_pos      = 0;
+    ctx->addr_space_size = 0;
+    return false;
+  }
+
+  ctx->base            = ptr;
+  ctx->commit_pos      = 0;
+  ctx->addr_space_size = size;
+  return true;
+}
+
+bool __yoru_vmem_commit_windows(Yoru_Vmem_Ctx *ctx, usize size) {
+  usize  size_aligned = yoru_align_up(size, yoru_get_page_size());
+  anyptr ptr          = VirtualAlloc((u8 *)ctx->base + ctx->commit_pos, size_aligned, MEM_COMMIT, PAGE_READWRITE);
+  if (!ptr) return false;
+  ctx->commit_pos += size_aligned;
+  return true;
+}
+
+static inline bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx) {
+  if (!VirtualFree(ctx->base, ctx->addr_space_size, MEM_RELEASE)) return false;
+  ctx->base            = NULL;
+  ctx->commit_pos      = 0;
+  ctx->addr_space_size = 0;
+  return true;
+}
+#    endif // Platform Check
+
 #  endif // YORU_IMPL
 #endif   // Platform Check
 
-#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
+#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(_WIN32)
 /* ============================================================
    MODULE: VirtualArenaAllocator
-   TODO:
-     - add support for more platforms:
-       - [ ] windows (minimum)
-       - [ ] others that may be needed?
    ============================================================ */
 
 typedef Yoru_Allocator      Yoru_VirtualArenaAllocator;
