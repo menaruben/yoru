@@ -13,7 +13,7 @@ int main() {
   if (!yoru_string_copy(&allocator, &s1, &s1_copy)) return 2;
 
   // points to the same string as the s1_copy!
-  Yoru_String s1_copy_substr = {0};
+  Yoru_StringView s1_copy_substr = {0};
   if (!yoru_string_substring(&s1_copy, 6, 11, &s1_copy_substr)) return 3;
   s1_copy.data[6]  = 'w';
   s1_copy.data[7]  = 'e';

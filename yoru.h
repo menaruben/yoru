@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
 
 #if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
 #  include <sys/mman.h>
@@ -42,8 +43,11 @@
 #define U64_MIN 0
 #define U64_MAX UINT64_MAX
 #define USIZE_MAX SIZE_MAX
-
 #define PTR_SIZE sizeof(void *)
+
+#define YORU_ARRAY_LEN(__arr) (sizeof(arr) / sizeof(arr[0]))
+#define YORU_TODO(__msg) assert(false && __msg)
+#define YORU_NAMEOF(__x) (#__x)
 
 typedef int8_t        i8;
 typedef uint8_t       u8;
@@ -738,75 +742,253 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
 
 /* ============================================================
    MODULE: StringView
-   provides a mutable, sized, non-nulltermianted string type
-
-   When printing the strings, make sure to use the `Yoru_String_Fmt`
-   and concatenate the string in the printf and use the
-   `Yoru_String_Fmt_Args` to pass the corresponding args.
-   This is needed because the data is not null terminated so we
-   have to pass the length too. Here is an example:
-   ```c
-   int main() {
-     Yoru_GlobalAllocator allocator = yoru_global_allocator_make();
-
-     Yoru_String message = {0};
-     cstr m = "hello world!";
-     if (!yoru_string_from_str(&allocator, m, sizeof(m)-1, &message))
-       return 1;
-
-     printf("My string: `" Yoru_String_Fmt "`\n", Yoru_String_Fmt_Args(&message));
-     return 0;
-   }
-   ```
+   provides an immutable, sized, non-nulltermianted stringview type
+   that does NOT own its data and is just a view into an already
+   existing string.
    ============================================================ */
 
 #define Yoru_String_Fmt "%.*s"
-
 #define Yoru_String_Fmt_Args(__str_ptr) (int)(__str_ptr)->length, (__str_ptr)->data
 
-/// @brief mutable and sized NON-NULLTERMINATED string
-typedef struct Yoru_String {
-  u8             *data;
+/// @brief immutable and sized NON-NULLTERMINATED string
+typedef struct {
+  const u8 *data;
+  usize     length;
+} Yoru_StringView;
+
+typedef Yoru_ArrayList_T(Yoru_StringView) Yoru_StringViews;
+typedef bool (*Yoru_CharPredicate)(u8 c, usize index);
+
+typedef enum { YORU_TRIM_LEFT = 1, YORU_TRIM_RIGHT = 2 } Yoru_TrimOptions;
+
+Yoru_StringView yoru_stringview_skip(const Yoru_StringView *sv, usize skip);
+Yoru_StringView yoru_stringview_skip_while(const Yoru_StringView *sv, Yoru_CharPredicate predicate);
+Yoru_StringView yoru_stringview_take(const Yoru_StringView *sv, usize take);
+Yoru_StringView yoru_stringview_take_while(const Yoru_StringView *sv, Yoru_CharPredicate predicate);
+bool            yoru_stringview_has_prefix(const Yoru_StringView *sv, const char *prefix, usize n);
+bool            yoru_stringview_has_infix(const Yoru_StringView *sv, const char *infix, usize n);
+bool            yoru_stringview_has_suffix(const Yoru_StringView *sv, const char *suffix, usize n);
+bool            yoru_stringview_is_empty(const Yoru_StringView *sv);
+Yoru_StringView yoru_stringview_trim(const Yoru_StringView *sv, Yoru_TrimOptions trim_options);
+
+Yoru_StringView
+yoru_stringview_trim_while(const Yoru_StringView *sv, Yoru_TrimOptions trim_options, Yoru_CharPredicate predicate);
+
+Yoru_StringViews yoru_stringview_split_by_char(
+    const Yoru_StringView *sv, Yoru_Allocator *allocator, usize max_split_count, char separator, bool remove_empty);
+
+#ifdef YORU_IMPL
+Yoru_StringView yoru_stringview_skip(const Yoru_StringView *sv, usize skip) {
+  assert(sv);
+  skip              = skip < sv->length ? skip : sv->length;
+  Yoru_StringView s = *sv;
+  return (Yoru_StringView){.data = s.data + skip, .length = s.length - skip};
+}
+
+Yoru_StringView yoru_stringview_skip_while(const Yoru_StringView *sv, Yoru_CharPredicate predicate) {
+  assert(sv);
+  assert(predicate);
+  Yoru_StringView s = *sv;
+  usize           i = 0;
+  while (i < s.length) {
+    char c = s.data[i];
+    if (!predicate(c, i)) break;
+    ++i;
+  }
+
+  return (Yoru_StringView){.data = s.data + i, .length = s.length - i};
+}
+
+Yoru_StringView yoru_stringview_take(const Yoru_StringView *sv, usize take) {
+  assert(sv);
+  Yoru_StringView s = *sv;
+  take              = take < s.length ? take : s.length;
+  return (Yoru_StringView){.data = s.data, .length = take};
+}
+
+Yoru_StringView yoru_stringview_take_while(const Yoru_StringView *sv, Yoru_CharPredicate predicate) {
+  assert(sv);
+  assert(predicate);
+  Yoru_StringView s = *sv;
+
+  usize i = 0;
+  while (i < s.length) {
+    char c = s.data[i];
+    if (!predicate(c, i)) break;
+    ++i;
+  }
+
+  return (Yoru_StringView){.data = s.data, .length = i};
+}
+
+bool yoru_stringview_has_prefix(const Yoru_StringView *sv, const char *prefix, usize n) {
+  assert(sv);
+  assert(sv->data);
+  if (sv->length < n) return false;
+  return memcmp(sv->data, prefix, n) == 0;
+}
+
+bool yoru_stringview_has_infix(const Yoru_StringView *sv, const char *infix, usize n) {
+  assert(sv);
+  assert(sv->data);
+  if (sv->length < n) return false;
+  for (usize i = 0; i < sv->length; ++i) {
+    if (sv->data[i] == (u8)infix[0] && (i + n < sv->length)) {
+      usize pos = i + 1;
+      while (pos < sv->length) {
+        if (!(sv->data[pos] == (u8)infix[pos])) break;
+        ++pos;
+      }
+
+      // if we get here then we found a match because we dont break out of the loop
+      // because of a diff of infix and data
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool yoru_stringview_has_suffix(const Yoru_StringView *sv, const char *suffix, usize n) {
+  assert(sv);
+  assert(sv->data);
+  if (sv->length < n) return false;
+  return memcmp(sv->data + sv->length - n, suffix, n) == 0;
+}
+
+bool yoru_stringview_is_empty(const Yoru_StringView *sv) {
+  assert(sv);
+  return sv->length == 0;
+}
+
+Yoru_StringView yoru_stringview_trim(const Yoru_StringView *sv, Yoru_TrimOptions trim_options) {
+  assert(sv);
+
+  usize start = 0;
+  usize end   = sv->length; // exclusive
+
+  if (trim_options & YORU_TRIM_LEFT) {
+    while (start < end && isspace((unsigned char)sv->data[start])) {
+      ++start;
+    }
+  }
+
+  if (trim_options & YORU_TRIM_RIGHT) {
+    while (end > start && isspace((unsigned char)sv->data[end - 1])) {
+      --end;
+    }
+  }
+
+  return (Yoru_StringView){.data = sv->data + start, .length = end - start};
+}
+
+Yoru_StringView
+yoru_stringview_trim_while(const Yoru_StringView *sv, Yoru_TrimOptions trim_options, Yoru_CharPredicate predicate) {
+  assert(sv);
+  assert(predicate);
+
+  usize start = 0;
+  usize end   = sv->length; // exclusive
+
+  if (trim_options & YORU_TRIM_LEFT) {
+    while (start < end && predicate(sv->data[start], start)) {
+      ++start;
+    }
+  }
+
+  if (trim_options & YORU_TRIM_RIGHT) {
+    while (end > start && predicate(sv->data[end - 1], end - 1)) {
+      --end;
+    }
+  }
+
+  return (Yoru_StringView){
+      .data   = sv->data + start,
+      .length = end - start,
+  };
+}
+
+Yoru_StringViews yoru_stringview_split_by_char(
+    const Yoru_StringView *sv, Yoru_Allocator *allocator, usize max_split_count, char separator, bool remove_empty) {
+  assert(sv && sv->data && allocator);
+
+  max_split_count = max_split_count == USIZE_MAX ? YORU_ARRAYLIST_INITIAL_CAPACITY : max_split_count;
+
+  Yoru_StringViews stringviews = {0};
+  yoru_arraylist_init(&stringviews, allocator, max_split_count);
+
+  usize curr_start = 0;
+
+  for (usize i = 0; i < sv->length; ++i) {
+    if (sv->data[i] != separator) continue;
+
+    if (i == curr_start && remove_empty) {
+      curr_start = i + 1;
+      continue;
+    }
+
+    Yoru_StringView field = {.data = sv->data + curr_start, .length = i - curr_start};
+
+    yoru_arraylist_append(&stringviews, field);
+    curr_start = i + 1;
+  }
+
+  // append last field
+  if (curr_start < sv->length) {
+    usize length = sv->length - curr_start;
+    if (!(remove_empty && length == 0)) {
+      Yoru_StringView field = {.data = sv->data + curr_start, .length = length};
+      yoru_arraylist_append(&stringviews, field);
+    }
+  }
+
+  return stringviews;
+}
+
+#endif // YORU_IMPL
+
+/* ============================================================
+   MODULE: String
+   provides an immutable, sized, non-nulltermianted string type
+   that OWNS its data.
+
+   Difference to StringView:
+   - StringView does not own the memory it is 'viewing'. StringViews
+     can be created from a StringBuilder or a String itself but
+     they do not allocate nor do they free memory.
+  ============================================================= */
+
+typedef struct {
+  const u8       *data;
   usize           length;
   Yoru_Allocator *allocator;
 } Yoru_String;
 
-/// @brief Creates an empty string of specific length
-bool yoru_string_make(Yoru_Allocator *allocator, usize length, Yoru_String *out_string);
-
-/// @brief Creates a string from a c-string of a specific length and copies the given string into the data ptr
-bool yoru_string_from_str(Yoru_Allocator *allocator, const char *s, usize length, Yoru_String *out_string);
+/// @brief Creates an empty string of specific length. If `initial_value` is NULL then the string is just a zero string.
+bool yoru_string_make(Yoru_Allocator *allocator, usize length, const char *initial_value, Yoru_String *out_string);
 
 /// @brief Creates a DEEP-copy of a string
 bool yoru_string_copy(Yoru_Allocator *allocator, Yoru_String *src, Yoru_String *dest);
 
-/// @brief Creates a new string which is the substring of a given string
-/// @note Changing values in the substring also changes values in the "complete" string as it
-/// is just a small window/view of the original string
-bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_String *out_string);
-
 /// @brief Deallocates the string using the allocator that owns it
 void yoru_string_destroy(Yoru_String *s);
 
+/// @brief Creates a new string which is the substring of a given string
+/// @note Changing values in the substring also changes values in the "complete" string as it is just a small window/view of the original string
+bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_StringView *out_stringview);
+
 #ifdef YORU_IMPL
-bool yoru_string_make(Yoru_Allocator *allocator, usize length, Yoru_String *out_string) {
+bool yoru_string_make(Yoru_Allocator *allocator, usize length, const char *initial_value, Yoru_String *out_string) {
   assert(allocator);
   assert(out_string);
 
   Yoru_Opt maybe_data = yoru_allocator_alloc(allocator, length * sizeof(u8));
   if (!maybe_data.has_value) return false;
+  if (initial_value != NULL) { memcpy(maybe_data.ptr, initial_value, length); }
 
   out_string->data      = maybe_data.ptr;
   out_string->length    = length;
   out_string->allocator = allocator;
-  return true;
-}
-
-bool yoru_string_from_str(Yoru_Allocator *allocator, const char *s, usize length, Yoru_String *out_string) {
-  if (!yoru_string_make(allocator, length, out_string)) return false;
-  for (usize i = 0; i < length; ++i)
-    out_string->data[i] = (u8)s[i];
-
   return true;
 }
 
@@ -815,13 +997,13 @@ bool yoru_string_copy(Yoru_Allocator *allocator, Yoru_String *src, Yoru_String *
   assert(src);
   assert(dest);
 
-  if (!yoru_string_make(allocator, src->length, dest)) return false;
-  memcpy(dest->data, src->data, src->length);
+  if (!yoru_string_make(allocator, src->length, NULL, dest)) return false;
+  memcpy((anyptr)dest->data, src->data, src->length);
   return true;
 }
 
-bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_String *out_string) {
-  assert(out_string);
+bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_StringView *out_stringview) {
+  assert(out_stringview);
   assert(s);
   assert(s->data);
   assert(s->allocator);
@@ -829,10 +1011,9 @@ bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_String *
   assert(end < s->length && "index must be within length");
   assert(start < end && "start index must be less than end");
 
-  usize length          = end - start;
-  out_string->data      = s->data + start;
-  out_string->length    = length;
-  out_string->allocator = s->allocator;
+  usize length           = end - start;
+  out_stringview->data   = s->data + start;
+  out_stringview->length = length;
   return true;
 }
 
@@ -840,8 +1021,7 @@ void yoru_string_destroy(Yoru_String *s) {
   assert(s);
   assert(s->data);
   assert(s->allocator);
-
-  yoru_allocator_dealloc(s->allocator, s->data);
+  yoru_allocator_dealloc(s->allocator, (anyptr)s->data);
   s->data      = NULL;
   s->length    = 0;
   s->allocator = NULL;
@@ -874,8 +1054,11 @@ bool yoru_stringbuilder_append_cstr(Yoru_StringBuilder *sb, const char *, usize 
 /// @brief Appends a Yoru_String to the stringbuilder
 bool yoru_stringbuilder_append_string(Yoru_StringBuilder *sb, const Yoru_String *s);
 
-/// @brief Creates a Yoru_String from the stringbuider
+/// @brief Creates a string from the stringbuider, copying the data of the stringbuilder
 bool yoru_stringbuilder_to_string(Yoru_StringBuilder *sb, Yoru_String *out_string);
+
+/// @brief Creates a stringview from the current stringbuilder state
+bool yoru_stringbuilder_to_stringview(Yoru_StringBuilder *sb, Yoru_StringView *out_sv);
 
 #ifdef YORU_IMPL
 void yoru_stringbuilder_init(Yoru_Allocator *allocator, Yoru_StringBuilder *sb) {
@@ -894,10 +1077,17 @@ bool yoru_stringbuilder_to_string(Yoru_StringBuilder *sb, Yoru_String *out_strin
   assert(sb->items);
   assert(sb->allocator);
   assert(out_string);
-  Yoru_String temp_res = {0};
-  if (!yoru_string_from_str(sb->allocator, (const char *)sb->items, sb->size, &temp_res)) return false;
-  if (!yoru_string_copy(sb->allocator, &temp_res, out_string)) return false;
-  yoru_string_destroy(&temp_res);
+  if (!yoru_string_make(sb->allocator, sb->size, (const char *)sb->items, out_string)) return false;
+  return true;
+}
+
+bool yoru_stringbuilder_to_stringview(Yoru_StringBuilder *sb, Yoru_StringView *out_sv) {
+  assert(sb);
+  assert(sb->items);
+  assert(sb->allocator);
+  assert(out_sv);
+  out_sv->data   = sb->items;
+  out_sv->length = sb->size;
   return true;
 }
 
@@ -939,19 +1129,19 @@ bool yoru_stringbuilder_append_string(Yoru_StringBuilder *sb, const Yoru_String 
    provides a small interface to interact with filesystem
    ============================================================ */
 
-Yoru_String yoru_read_file(Yoru_Allocator *allocator, const char *filepath);
-Yoru_String yoru_read_file_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes);
-usize       yoru_get_file_size(const char *filepath);
+Yoru_String yoru_file_read(Yoru_Allocator *allocator, const char *filepath);
+Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes);
+usize       yoru_file_get_size(const char *filepath);
 
 #ifdef YORU_IMPL
-Yoru_String yoru_read_file(Yoru_Allocator *allocator, const char *filepath) {
+Yoru_String yoru_file_read(Yoru_Allocator *allocator, const char *filepath) {
   assert(allocator);
   assert(filepath);
-  usize size = yoru_get_file_size(filepath);
-  return yoru_read_file_exact(allocator, filepath, 0, size);
+  usize size = yoru_file_get_size(filepath);
+  return yoru_file_read_exact(allocator, filepath, 0, size);
 }
 
-Yoru_String yoru_read_file_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes) {
+Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes) {
   assert(allocator);
   assert(filepath);
 
@@ -967,10 +1157,10 @@ Yoru_String yoru_read_file_exact(Yoru_Allocator *allocator, const char *filepath
   // make sure that we do not try to read more than we can
   usize read_size = file_size - offset_bytes;
   if (read_size > max_bytes) read_size = max_bytes;
-  if (!yoru_string_make(allocator, read_size, &res)) goto cleanup;
+  if (!yoru_string_make(allocator, read_size, NULL, &res)) goto cleanup;
 
   fseek(file, offset_bytes, SEEK_SET);
-  fread(res.data, sizeof(u8), res.length, file);
+  fread((anyptr)res.data, sizeof(u8), res.length, file);
   fclose(file);
   return res;
 
@@ -980,7 +1170,7 @@ cleanup:
   return res;
 }
 
-usize yoru_get_file_size(const char *filepath) {
+usize yoru_file_get_size(const char *filepath) {
   assert(filepath);
   FILE *file = fopen(filepath, "r");
   if (!file) return 0;
@@ -991,109 +1181,4 @@ usize yoru_get_file_size(const char *filepath) {
 }
 #endif // YORU_IMPL
 
-#ifdef YORU_INCLUDE_EXPERIMENTAL
-/* ============================================================
-   MODULE: CrashHandler
-   provides a **VERY EXPERIMENTAL** way to install a crash handler
-   for various signals to for example find out where a segfault
-   exactly occurred... Currently only supported for
-   - x86_64
-
-   You probably need to compile your program with the
-   `-g` and `-no-pie` flags though and is only ever
-   useful in debugging scenarios. Example:
-   ```c
-   #define YORU_IMPL
-   #define YORU_INCLUDE_EXPERIMENTAL
-   #include "../yoru.h"
-   
-   #include <stdio.h>
-   #include <stddef.h>
-   
-   int main() {
-     yoru_install_crashhandler();
-   
-     char *null_ptr = NULL;
-     printf("%c\n", *null_ptr);
-     return 0;
-   }
-   ```
-   compile and run:
-   ```
-   $ gcc crashhandler.c -no-pie -g
-   $ ./a.out
-   Crash: signal 11 (Segmentation fault) at address (nil)
-   Instruction pointer: 0x403583
-   Top frame: main at /.../crashhandler.c:12
-   ```
-   Looks really nice on posix but on windows you will just get something like:
-   ```
-   Crash: Windows exception at address 00007FF746329A3F
-   ```
-   but there is probably a way to do something similar :)
-   ============================================================ */
-
-void yoru_install_crashhandler();
-
-#  ifdef YORU_IMPL
-#    if defined(_WIN32)
-
-static LONG WINAPI __yoru_win_exception_handler(EXCEPTION_POINTERS *ep) {
-  void *addr = ep->ExceptionRecord->ExceptionAddress;
-  fprintf(stderr, "Crash: Windows exception at address %p\n", addr);
-  fflush(stderr);
-  return EXCEPTION_EXECUTE_HANDLER;
-}
-
-void yoru_install_crashhandler() {
-  SetUnhandledExceptionFilter(__yoru_win_exception_handler);
-}
-
-#    elif (defined(__linux__) || (defined(__APPLE__) || defined(__MACH__))) && defined(__x86_64__)
-#      include <signal.h>
-#      include <sys/ucontext.h>
-#      include <ucontext.h>
-
-static void __yoru_posix_crashhandler(int sig, siginfo_t *info, anyptr ctx);
-
-void yoru_install_crashhandler() {
-  struct sigaction sa;
-  sa.sa_sigaction = __yoru_posix_crashhandler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
-
-  sigaction(SIGSEGV, &sa, NULL);
-  sigaction(SIGABRT, &sa, NULL);
-  sigaction(SIGFPE, &sa, NULL);
-  sigaction(SIGILL, &sa, NULL);
-  sigaction(SIGBUS, &sa, NULL);
-}
-
-static void __yoru_posix_crashhandler(int sig, siginfo_t *info, anyptr ctx) {
-  void *fault_addr = info ? info->si_addr : NULL;
-  fprintf(stderr, "Crash: signal %d (%s) at address %p\n", sig, strsignal(sig), fault_addr);
-  ucontext_t *uctx = (ucontext_t *)ctx;
-  anyptr      rip  = (anyptr)uctx->uc_mcontext.gregs[16]; // REG_RIP = 16
-  fprintf(stderr, "Instruction pointer: %p\n", rip);
-
-  usize   exe_len = 1024;
-  char    exe_path[exe_len]; // should be enough i think ^^
-  ssize_t len = readlink("/proc/self/exe", exe_path, exe_len);
-  if (len > 0) {
-    exe_path[len % exe_len] = 0;
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd), "addr2line -f -p -e %s %p 2>/dev/null", exe_path, rip);
-    fprintf(stderr, "Top frame: ");
-    fflush(stderr);
-    system(cmd);
-  }
-
-  fflush(stderr);
-  _exit(1);
-}
-#    else
-#      error "platform not supported"
-#    endif // Platform Check
-#  endif   // YORU_IMPL
-#endif     // YORU_INCLUDE_EXPERIMENTAL
-#endif     // __YORU_H__
+#endif // __YORU_H__
