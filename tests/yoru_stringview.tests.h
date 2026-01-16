@@ -172,12 +172,12 @@ bool yoru_stringview_split_by_char_test() {
   Yoru_StringBuilder sb        = {0};
   Yoru_StringView    sv        = {0};
 
-  BUILD_SV_FROM_CSTR(&allocator, &sb, &sv, "Hello World! This is a test  :) ");
+  BUILD_SV_FROM_CSTR(&allocator, &sb, &sv, "Hello  World    ! This is a test  :) ");
 
-  Yoru_StringViews fields = yoru_stringview_split_by_char(&sv, &allocator, USIZE_MAX, ' ', true);
+  usize max_split = 5;
+  Yoru_StringViews fields = yoru_stringview_split_by_char(&sv, &allocator, max_split, ' ', true);
 
-  YORU_EXPECT_EQ_USIZE(7, fields.size);
-
+  YORU_EXPECT_EQ_USIZE(max_split, fields.size);
   yoru_stringbuilder_destroy(&sb);
   return true;
 

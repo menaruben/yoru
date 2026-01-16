@@ -45,18 +45,15 @@
     YORU_EXPECT_TRUE(yoru_stringbuilder_to_stringview((builder), (view)));                                             \
   } while (0)
 
-static bool is_space(u8 c, usize i) {
-  (void)i;
+static bool is_space(u8 c) {
   return c == ' ';
 }
 
-static bool is_alpha(u8 c, usize i) {
-  (void)i;
+static bool is_alpha(u8 c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-static bool is_x(u8 c, usize i) {
-  (void)i;
+static bool is_x(u8 c) {
   return c == 'x';
 }
 

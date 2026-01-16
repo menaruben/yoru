@@ -1,16 +1,15 @@
 #ifndef __YORU_H__
 #define __YORU_H__
 
-#include <stdint.h>
-#include <stddef.h>
+#include <assert.h>
+#include <ctype.h>
+#include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <ctype.h>
 
 #if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
 #  include <sys/mman.h>
@@ -99,10 +98,10 @@ Yoru_Opt yoru_opt_none() {
    ============================================================ */
 
 /// @brief Represents a ptr that MUST NOT be null. (unless youre silly! ^^)
-/// Please make sure to use the provided constructor `yoru_ref_make` to make a new ref
-/// and use `yoru_ref_get` to get the actual ptr contained in the ref struct.
-/// If in any way the ptr is null when creating the ref or getting the ptr it will fail
-/// because the `contract` is broken.
+/// Please make sure to use the provided constructor `yoru_ref_make` to make a
+/// new ref and use `yoru_ref_get` to get the actual ptr contained in the ref
+/// struct. If in any way the ptr is null when creating the ref or getting the
+/// ptr it will fail because the `contract` is broken.
 typedef struct Yoru_Ref {
   const anyptr ptr;
 } Yoru_Ref;
@@ -151,16 +150,20 @@ typedef struct Yoru_Allocator {
   anyptr                      ctx;
 } Yoru_Allocator;
 
-/// @brief Allocates memory using the alloc function inside the allocators vtable
+/// @brief Allocates memory using the alloc function inside the allocators
+/// vtable
 Yoru_Opt yoru_allocator_alloc(Yoru_Allocator *allocator, usize size);
 
-/// @brief De-Allocates/Frees memory using the dealloc function inside the allocators vtable
+/// @brief De-Allocates/Frees memory using the dealloc function inside the
+/// allocators vtable
 void yoru_allocator_dealloc(Yoru_Allocator *allocator, anyptr ptr);
 
-/// @brief Re-Allocates memory using the realloc function inside the allocators vtable
+/// @brief Re-Allocates memory using the realloc function inside the allocators
+/// vtable
 Yoru_Opt yoru_allocator_realloc(Yoru_Allocator *allocator, usize old_size, anyptr old_ptr, usize new_size);
 
-// @brief Destroys the allocator instance using the destroy function iside the allocators vtable
+// @brief Destroys the allocator instance using the destroy function iside the
+// allocators vtable
 void yoru_allocator_destroy(Yoru_Allocator *allocator);
 
 #ifdef YORU_IMPL
@@ -197,10 +200,15 @@ void yoru_allocator_destroy(Yoru_Allocator *allocator) {
    MODULE: GlobalAllocator
    provides a global allocator that is just a wrapper around
    calloc and free that fits the ALlocator interface
+
+   This is for individual allocations and frees unlike the
+   `ArenaAllocator` or the `VirtualArenaAllocator`.
    ============================================================ */
 
 typedef Yoru_Allocator Yoru_GlobalAllocator;
-Yoru_GlobalAllocator   yoru_global_allocator_make();
+
+/// @brief Creates a global allocator
+Yoru_GlobalAllocator yoru_global_allocator_make();
 
 #ifdef YORU_IMPL
 Yoru_Opt __yoru_global_allocator_alloc(anyptr ctx, usize size);
@@ -260,7 +268,7 @@ void __yoru_global_allocator_destroy(anyptr ctx) {
 
 typedef Yoru_Allocator Yoru_ArenaAllocator;
 
-/// @brief Creates an arena allocator
+/// @brief Creates a heap-based arena allocator
 Yoru_ArenaAllocator *yoru_arena_allocator_make(usize capacity);
 
 #ifdef YORU_IMPL
@@ -324,8 +332,9 @@ Yoru_Opt __yoru_arena_allocator_alloc(anyptr ctx, usize size) {
 void __yoru_arena_allocator_dealloc(anyptr ctx, anyptr ptr) {
   (void)ctx;
   (void)ptr;
-  /* Freeing in an arena is a no-op because the idea is that you free the entire arena once.
-     For that you would call the yoru_allocator_destroy func on the arena allocator */
+  /* Freeing in an arena is a no-op because the idea is that you free the entire
+     arena once. For that you would call the yoru_allocator_destroy func on the
+     arena allocator */
 }
 
 Yoru_Opt __yoru_arena_allocator_realloc(anyptr ctx, usize old_size, anyptr old_ptr, usize new_size) {
@@ -333,12 +342,14 @@ Yoru_Opt __yoru_arena_allocator_realloc(anyptr ctx, usize old_size, anyptr old_p
   (void)old_size;
   (void)old_ptr;
   (void)new_size;
-  /* Reallocations are not supported on arena allocators because if you want to grow something in the
-     middle of the arena then we would also have to shift every ptr to the right which might not work
-     becuase the arena might not be able to fit everything with the new ptr in the arena and we dont
-     know in the arena ctx where which ptr starts! otherwise we would have to keep track of them here.
-
-     -> TODO: maybe we could handle reallocs like normal allocations instead and just push to the arena?
+  /* Reallocations are not supported on arena allocators because if you want to
+     grow something in the middle of the arena then we would also have to shift
+     every ptr to the right which might not work becuase the arena might not be
+     able to fit everything with the new ptr in the arena and we dont know in
+     the arena ctx where which ptr starts! otherwise we would have to keep track
+     of them here.
+     -> TODO: maybe we could handle reallocs like normal allocations instead and
+     just push to the arena?
   */
   return yoru_opt_none();
 }
@@ -360,7 +371,8 @@ void __yoru_arena_allocator_destroy(anyptr ctx) {
      - linux
      - macos
      - windows
-     -> if your platform is not supported you can open an issue or open a pull request! :)
+     -> if your platform is not supported you can open an issue or open a pull
+   request! :)
    ============================================================ */
 
 typedef struct Yoru_Vmem_Ctx {
@@ -369,11 +381,21 @@ typedef struct Yoru_Vmem_Ctx {
   usize  addr_space_size;
 } Yoru_Vmem_Ctx;
 
+/// @brief aligns `x` to `alignment`
 usize yoru_align_up(usize x, usize alignment);
+
+/// @brief returns the page size on the current system
 usize yoru_get_page_size();
-bool  yoru_vmem_reserve(usize size, Yoru_Vmem_Ctx *out_ctx);
-bool  yoru_vmem_commit(Yoru_Vmem_Ctx *ctx, usize size);
-bool  yoru_vmem_free(Yoru_Vmem_Ctx *ctx);
+
+/// @brief reserves an page-aligned `size` amount of bytes of reserved memory
+bool yoru_vmem_reserve(usize size, Yoru_Vmem_Ctx *out_ctx);
+
+/// @brief commits a page-aligned size to a `ctx` increasing the commit
+/// position. returns true on success, else false
+bool yoru_vmem_commit(Yoru_Vmem_Ctx *ctx, usize size);
+
+/// @brief frees the reserved address space
+bool yoru_vmem_free(Yoru_Vmem_Ctx *ctx);
 
 #  ifdef YORU_IMPL
 usize yoru_align_up(usize x, usize alignment) {
@@ -469,7 +491,6 @@ static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx) {
   return true;
 }
 #    endif
-
 #    if defined(_WIN32)
 static inline bool __yoru_vmem_reserve_windows(usize size, Yoru_Vmem_Ctx *ctx) {
   anyptr ptr = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
@@ -520,7 +541,10 @@ static inline bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx) {
    is defined.
    ============================================================ */
 
-typedef Yoru_Allocator      Yoru_VirtualArenaAllocator;
+typedef Yoru_Allocator Yoru_VirtualArenaAllocator;
+
+/// @brief Creates an instance of a `VirtualArenaAllocator` with one committed
+/// page.
 Yoru_VirtualArenaAllocator *yoru_virtual_arena_allocator_make(usize capacity);
 
 #  ifdef YORU_IMPL
@@ -596,8 +620,9 @@ Yoru_Opt __yoru_virtual_arena_allocator_alloc(anyptr ctx, usize size) {
 void __yoru_virtual_arena_allocator_dealloc(anyptr ctx, anyptr ptr) {
   (void)ctx;
   (void)ptr;
-  /* Freeing in an arena is a no-op because the idea is that you free the entire arena once.
-     For that you would call the yoru_allocator_destroy func on the arena allocator */
+  /* Freeing in an arena is a no-op because the idea is that you free the entire
+     arena once. For that you would call the yoru_allocator_destroy func on the
+     arena allocator */
 }
 
 Yoru_Opt __yoru_virtual_arena_allocator_realloc(anyptr ctx, usize old_size, anyptr old_ptr, usize new_size) {
@@ -605,12 +630,15 @@ Yoru_Opt __yoru_virtual_arena_allocator_realloc(anyptr ctx, usize old_size, anyp
   (void)old_size;
   (void)old_ptr;
   (void)new_size;
-  /* Reallocations are not supported on arena allocators because if you want to grow something in the
-     middle of the arena then we would also have to shift every ptr to the right which might not work
-     becuase the arena might not be able to fit everything with the new ptr in the arena and we dont
-     know in the arena ctx where which ptr starts! otherwise we would have to keep track of them here.
+  /* Reallocations are not supported on arena allocators because if you want to
+     grow something in the middle of the arena then we would also have to shift
+     every ptr to the right which might not work becuase the arena might not be
+     able to fit everything with the new ptr in the arena and we dont know in
+     the arena ctx where which ptr starts! otherwise we would have to keep track
+     of them here.
 
-     -> maybe we could handle reallocs like normal allocations instead and just push to the arena?
+     -> maybe we could handle reallocs like normal allocations instead and just
+     push to the arena?
   */
   return yoru_opt_none();
 }
@@ -655,17 +683,18 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
      IntArrayList xs = {0};
 
      // you can just pass 0 as initial capacity and it will use the default
-     yoru_arraylist_init(&xs, &allocator, 16); 
+     yoru_arraylist_init(&xs, &allocator, 16);
      for (usize i = 0; i < 128; ++i) {
        yoru_arraylist_append(&xs, i);
      }
 
      // do something
 
-     yoru_arraylist_destroy(&xs); // destroys arraylist with allocator that `owns` it
+     yoru_arraylist_destroy(&xs); // destroys arraylist with allocator that
+   `owns` it
    }
    ```
-   
+
    TODO:
      - find a way to handle errors better
    ============================================================ */
@@ -728,11 +757,10 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
   do {                                                                                                                 \
     usize item_size = sizeof((__arr_ptr)->items[0]);                                                                   \
     assert((__arr_ptr));                                                                                               \
-    Yoru_Opt maybe_new_ptr = yoru_allocator_realloc(                                                                   \
-        (__arr_ptr)->allocator,                                                                                        \
-        (__arr_ptr)->capacity * item_size,                                                                             \
-        (__arr_ptr)->items,                                                                                            \
-        (__new_capacity) * item_size);                                                                                 \
+    Yoru_Opt maybe_new_ptr = yoru_allocator_realloc((__arr_ptr)->allocator,                                            \
+                                                    (__arr_ptr)->capacity * item_size,                                 \
+                                                    (__arr_ptr)->items,                                                \
+                                                    (__new_capacity) * item_size);                                     \
     assert(maybe_new_ptr.has_value && "could not append new value");                                                   \
     anyptr new_ptr        = maybe_new_ptr.ptr;                                                                         \
     (__arr_ptr)->items    = new_ptr;                                                                                   \
@@ -757,25 +785,62 @@ typedef struct {
 } Yoru_StringView;
 
 typedef Yoru_ArrayList_T(Yoru_StringView) Yoru_StringViews;
-typedef bool (*Yoru_CharPredicate)(u8 c, usize index);
+typedef bool (*Yoru_CharPredicate)(u8 c);
 
 typedef enum { YORU_TRIM_LEFT = 1, YORU_TRIM_RIGHT = 2 } Yoru_TrimOptions;
 
+/// @brief skips `skip` amount of characters from a stringview and returns the
+/// new view
 Yoru_StringView yoru_stringview_skip(const Yoru_StringView *sv, usize skip);
+
+/// @brief skips characters while the predicate is true and we are within the
+/// bounds of the string and returns the new stringview
 Yoru_StringView yoru_stringview_skip_while(const Yoru_StringView *sv, Yoru_CharPredicate predicate);
+
+/// @brief returns the first chars (amount = min(`take`, length)) of a
+/// stringview
 Yoru_StringView yoru_stringview_take(const Yoru_StringView *sv, usize take);
+
+/// @brief returns the first chars of a stringview where the predicate is true
+/// or we reach the end of the view as a new view
 Yoru_StringView yoru_stringview_take_while(const Yoru_StringView *sv, Yoru_CharPredicate predicate);
-bool            yoru_stringview_has_prefix(const Yoru_StringView *sv, const char *prefix, usize n);
-bool            yoru_stringview_has_infix(const Yoru_StringView *sv, const char *infix, usize n);
-bool            yoru_stringview_has_suffix(const Yoru_StringView *sv, const char *suffix, usize n);
-bool            yoru_stringview_is_empty(const Yoru_StringView *sv);
+
+/// @brief returns `true` if the string starts with the first `n` chars of
+/// `prefix`, else false
+bool yoru_stringview_has_prefix(const Yoru_StringView *sv, const char *prefix, usize n);
+
+/// @brief returns `true` if the string contains the first `n` chars of `infix`,
+/// else `false`
+bool yoru_stringview_has_infix(const Yoru_StringView *sv, const char *infix, usize n);
+
+/// @brief returns `true` if the string ends with the first `n` chars of
+/// `suffix`, else false
+bool yoru_stringview_has_suffix(const Yoru_StringView *sv, const char *suffix, usize n);
+
+/// @brief returns true if length of the stringview is 0, else false
+bool yoru_stringview_is_empty(const Yoru_StringView *sv);
+
+/// @brief returns a new stringview after trimming the whitespaces around the
+/// string depending on `trim_options`
+/// @note `trim_options` is a bitmap of YORU_TRIM_LEFT and YORU_TRIM_RIGHT
 Yoru_StringView yoru_stringview_trim(const Yoru_StringView *sv, Yoru_TrimOptions trim_options);
 
+/// @brief returns a new stringview after trimming if `predicate` is satisfied
+/// around the string depending on `trim_options`
+/// @note `trim_options` is a bitmap of YORU_TRIM_LEFT and YORU_TRIM_RIGHT. If
+/// you just pass 0, the same StringView is returned.
 Yoru_StringView
 yoru_stringview_trim_while(const Yoru_StringView *sv, Yoru_TrimOptions trim_options, Yoru_CharPredicate predicate);
 
-Yoru_StringViews yoru_stringview_split_by_char(
-    const Yoru_StringView *sv, Yoru_Allocator *allocator, usize max_split_count, char separator, bool remove_empty);
+/// @brief splits a stringview into a dynamic array of stringviews and returns
+/// it.
+/// @note  please make sure to destroy the dynamic array when you dont need it
+/// anymore
+Yoru_StringViews yoru_stringview_split_by_char(const Yoru_StringView *sv,
+                                               Yoru_Allocator        *allocator,
+                                               usize                  max_split_count,
+                                               char                   separator,
+                                               bool                   remove_empty);
 
 #ifdef YORU_IMPL
 Yoru_StringView yoru_stringview_skip(const Yoru_StringView *sv, usize skip) {
@@ -792,7 +857,7 @@ Yoru_StringView yoru_stringview_skip_while(const Yoru_StringView *sv, Yoru_CharP
   usize           i = 0;
   while (i < s.length) {
     char c = s.data[i];
-    if (!predicate(c, i)) break;
+    if (!predicate(c)) break;
     ++i;
   }
 
@@ -814,7 +879,7 @@ Yoru_StringView yoru_stringview_take_while(const Yoru_StringView *sv, Yoru_CharP
   usize i = 0;
   while (i < s.length) {
     char c = s.data[i];
-    if (!predicate(c, i)) break;
+    if (!predicate(c)) break;
     ++i;
   }
 
@@ -833,16 +898,8 @@ bool yoru_stringview_has_infix(const Yoru_StringView *sv, const char *infix, usi
   assert(sv->data);
   if (sv->length < n) return false;
   for (usize i = 0; i < sv->length; ++i) {
-    if (sv->data[i] == (u8)infix[0] && (i + n < sv->length)) {
-      usize pos = i + 1;
-      while (pos < sv->length) {
-        if (!(sv->data[pos] == (u8)infix[pos])) break;
-        ++pos;
-      }
-
-      // if we get here then we found a match because we dont break out of the loop
-      // because of a diff of infix and data
-      return true;
+    if (i + n < sv->length) {
+      if (memcmp(sv->data + i, infix, n) == 0) return true;
     }
   }
 
@@ -861,29 +918,24 @@ bool yoru_stringview_is_empty(const Yoru_StringView *sv) {
   return sv->length == 0;
 }
 
+Yoru_StringView
+__yoru_stringview_trim_core(const Yoru_StringView *sv, Yoru_TrimOptions trim_options, Yoru_CharPredicate predicate);
+
+static inline bool __yoru_isspace(u8 c) {
+  return isspace((int)c);
+}
+
 Yoru_StringView yoru_stringview_trim(const Yoru_StringView *sv, Yoru_TrimOptions trim_options) {
-  assert(sv);
-
-  usize start = 0;
-  usize end   = sv->length; // exclusive
-
-  if (trim_options & YORU_TRIM_LEFT) {
-    while (start < end && isspace((unsigned char)sv->data[start])) {
-      ++start;
-    }
-  }
-
-  if (trim_options & YORU_TRIM_RIGHT) {
-    while (end > start && isspace((unsigned char)sv->data[end - 1])) {
-      --end;
-    }
-  }
-
-  return (Yoru_StringView){.data = sv->data + start, .length = end - start};
+  return __yoru_stringview_trim_core(sv, trim_options, __yoru_isspace);
 }
 
 Yoru_StringView
 yoru_stringview_trim_while(const Yoru_StringView *sv, Yoru_TrimOptions trim_options, Yoru_CharPredicate predicate) {
+  return __yoru_stringview_trim_core(sv, trim_options, predicate);
+}
+
+Yoru_StringView
+__yoru_stringview_trim_core(const Yoru_StringView *sv, Yoru_TrimOptions trim_options, Yoru_CharPredicate predicate) {
   assert(sv);
   assert(predicate);
 
@@ -891,13 +943,13 @@ yoru_stringview_trim_while(const Yoru_StringView *sv, Yoru_TrimOptions trim_opti
   usize end   = sv->length; // exclusive
 
   if (trim_options & YORU_TRIM_LEFT) {
-    while (start < end && predicate(sv->data[start], start)) {
+    while (start < end && predicate(sv->data[start])) {
       ++start;
     }
   }
 
   if (trim_options & YORU_TRIM_RIGHT) {
-    while (end > start && predicate(sv->data[end - 1], end - 1)) {
+    while (end > start && predicate(sv->data[end - 1])) {
       --end;
     }
   }
@@ -908,18 +960,19 @@ yoru_stringview_trim_while(const Yoru_StringView *sv, Yoru_TrimOptions trim_opti
   };
 }
 
-Yoru_StringViews yoru_stringview_split_by_char(
-    const Yoru_StringView *sv, Yoru_Allocator *allocator, usize max_split_count, char separator, bool remove_empty) {
+Yoru_StringViews yoru_stringview_split_by_char(const Yoru_StringView *sv,
+                                               Yoru_Allocator        *allocator,
+                                               usize                  max_split_count,
+                                               char                   separator,
+                                               bool                   remove_empty) {
   assert(sv && sv->data && allocator);
 
-  max_split_count = max_split_count == USIZE_MAX ? YORU_ARRAYLIST_INITIAL_CAPACITY : max_split_count;
-
+  max_split_count              = max_split_count == USIZE_MAX ? YORU_ARRAYLIST_INITIAL_CAPACITY : max_split_count;
   Yoru_StringViews stringviews = {0};
   yoru_arraylist_init(&stringviews, allocator, max_split_count);
 
   usize curr_start = 0;
-
-  for (usize i = 0; i < sv->length; ++i) {
+  for (usize i = 0; i < sv->length && stringviews.size < max_split_count; ++i) {
     if (sv->data[i] != separator) continue;
 
     if (i == curr_start && remove_empty) {
@@ -928,13 +981,12 @@ Yoru_StringViews yoru_stringview_split_by_char(
     }
 
     Yoru_StringView field = {.data = sv->data + curr_start, .length = i - curr_start};
-
     yoru_arraylist_append(&stringviews, field);
     curr_start = i + 1;
   }
 
   // append last field
-  if (curr_start < sv->length) {
+  if (curr_start < sv->length && stringviews.size < max_split_count) {
     usize length = sv->length - curr_start;
     if (!(remove_empty && length == 0)) {
       Yoru_StringView field = {.data = sv->data + curr_start, .length = length};
@@ -953,6 +1005,7 @@ Yoru_StringViews yoru_stringview_split_by_char(
    that OWNS its data.
 
    Difference to StringView:
+
    - StringView does not own the memory it is 'viewing'. StringViews
      can be created from a StringBuilder or a String itself but
      they do not allocate nor do they free memory.
@@ -964,7 +1017,8 @@ typedef struct {
   Yoru_Allocator *allocator;
 } Yoru_String;
 
-/// @brief Creates an empty string of specific length. If `initial_value` is NULL then the string is just a zero string.
+/// @brief Creates an empty string of specific length. If `initial_value` is
+/// NULL then the string is just a zero string.
 bool yoru_string_make(Yoru_Allocator *allocator, usize length, const char *initial_value, Yoru_String *out_string);
 
 /// @brief Creates a DEEP-copy of a string
@@ -974,7 +1028,8 @@ bool yoru_string_copy(Yoru_Allocator *allocator, Yoru_String *src, Yoru_String *
 void yoru_string_destroy(Yoru_String *s);
 
 /// @brief Creates a new string which is the substring of a given string
-/// @note Changing values in the substring also changes values in the "complete" string as it is just a small window/view of the original string
+/// @note Changing values in the substring also changes values in the "complete"
+/// string as it is just a small window/view of the original string
 bool yoru_string_substring(Yoru_String *s, usize start, usize end, Yoru_StringView *out_stringview);
 
 #ifdef YORU_IMPL
@@ -1034,7 +1089,8 @@ void yoru_string_destroy(Yoru_String *s) {
    by appending char, c-strings or Yoru_String.
 
    TOOD:
-     - add a `yoru_stringbuilder_append_format(format, ...)` instead of char and cstr func
+     - add a `yoru_stringbuilder_append_format(format, ...)` instead of char and
+   cstr func
    ============================================================ */
 
 typedef Yoru_ArrayList_T(u8) Yoru_StringBuilder;
@@ -1054,7 +1110,8 @@ bool yoru_stringbuilder_append_cstr(Yoru_StringBuilder *sb, const char *, usize 
 /// @brief Appends a Yoru_String to the stringbuilder
 bool yoru_stringbuilder_append_string(Yoru_StringBuilder *sb, const Yoru_String *s);
 
-/// @brief Creates a string from the stringbuider, copying the data of the stringbuilder
+/// @brief Creates a string from the stringbuider, copying the data of the
+/// stringbuilder
 bool yoru_stringbuilder_to_string(Yoru_StringBuilder *sb, Yoru_String *out_string);
 
 /// @brief Creates a stringview from the current stringbuilder state
@@ -1129,9 +1186,15 @@ bool yoru_stringbuilder_append_string(Yoru_StringBuilder *sb, const Yoru_String 
    provides a small interface to interact with filesystem
    ============================================================ */
 
+/// @brief reads an entire file and returns the content in a string
 Yoru_String yoru_file_read(Yoru_Allocator *allocator, const char *filepath);
+
+/// @brief reads a maximum of `max_bytes` with offset `offset_bytes` from a file
+/// and returns content in a string
 Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes);
-usize       yoru_file_get_size(const char *filepath);
+
+/// @brief returns the file's size in bytes
+usize yoru_file_get_size(const char *filepath);
 
 #ifdef YORU_IMPL
 Yoru_String yoru_file_read(Yoru_Allocator *allocator, const char *filepath) {
@@ -1180,5 +1243,4 @@ usize yoru_file_get_size(const char *filepath) {
   return size;
 }
 #endif // YORU_IMPL
-
 #endif // __YORU_H__

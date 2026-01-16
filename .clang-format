@@ -14,9 +14,9 @@ BraceWrapping:
   SplitEmptyFunction: false
 
 AlignAfterOpenBracket: AlwaysBreak
-BinPackParameters: false # ensures parameters do not get packed on the same line
+BinPackParameters: false 
 BinPackArguments: false
-AllowAllParametersOfDeclarationOnNextLine: true # allow each parameter on its own line
+AllowAllParametersOfDeclarationOnNextLine: true
 AllowAllArgumentsOnNextLine: false
 
 AlignConsecutiveAssignments: true
