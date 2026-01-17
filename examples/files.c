@@ -25,6 +25,9 @@ int main() {
 
   assert(memcmp(content.data + offset, content_skip_10_take_13.data, max_bytes) == 0);
   printf("content:\n" Yoru_String_Fmt "", Yoru_String_Fmt_Args(&content));
+
+  assert(yoru_file_write_exact("./files_new_write.c", content.data, content.length, 0) == true);
+  assert(yoru_file_append_exact("./files_new_append.c", content.data, content.length) == true);
   return 0;
 }
 

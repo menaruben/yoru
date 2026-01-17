@@ -402,6 +402,18 @@ usize yoru_align_up(usize x, usize alignment) {
   return (x + alignment - 1) & ~(alignment - 1);
 }
 
+#    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
+bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx);
+bool __yoru_vmem_commit_linux(Yoru_Vmem_Ctx *ctx, usize size);
+bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx);
+#    elif defined(_WIN32)
+bool __yoru_vmem_reserve_windows(usize size, Yoru_Vmem_Ctx *ctx);
+bool __yoru_vmem_commit_windows(Yoru_Vmem_Ctx *ctx, usize size);
+bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx);
+#    else
+#      error "platform not supported"
+#    endif
+
 usize yoru_get_page_size() {
 #    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
   return (usize)sysconf(_SC_PAGE_SIZE);
@@ -414,9 +426,6 @@ usize yoru_get_page_size() {
 #    endif
 }
 
-static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx);
-static inline bool __yoru_vmem_reserve_windows(usize size, Yoru_Vmem_Ctx *ctx);
-
 bool yoru_vmem_reserve(usize size, Yoru_Vmem_Ctx *out_ctx) {
   assert(out_ctx && "must not be null");
 #    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
@@ -427,9 +436,6 @@ bool yoru_vmem_reserve(usize size, Yoru_Vmem_Ctx *out_ctx) {
 #      error "platform not supported yet"
 #    endif
 }
-
-bool __yoru_vmem_commit_linux(Yoru_Vmem_Ctx *ctx, usize size);
-bool __yoru_vmem_commit_windows(Yoru_Vmem_Ctx *ctx, usize size);
 
 bool yoru_vmem_commit(Yoru_Vmem_Ctx *ctx, usize size) {
   assert(ctx && "must not be null");
@@ -442,9 +448,6 @@ bool yoru_vmem_commit(Yoru_Vmem_Ctx *ctx, usize size) {
 #      error "platform not supported yet"
 #    endif
 }
-
-static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx);
-static inline bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx);
 
 bool yoru_vmem_free(Yoru_Vmem_Ctx *ctx) {
   assert(ctx && "must not be null");
@@ -459,7 +462,7 @@ bool yoru_vmem_free(Yoru_Vmem_Ctx *ctx) {
 }
 
 #    if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
-static inline bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx) {
+bool __yoru_vmem_reserve_linux(usize size, Yoru_Vmem_Ctx *ctx) {
   anyptr ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
   if (ptr == MAP_FAILED) {
     ctx->base            = NULL;
@@ -482,7 +485,7 @@ bool __yoru_vmem_commit_linux(Yoru_Vmem_Ctx *ctx, usize size) {
   return true;
 }
 
-static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx) {
+bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx) {
   int err = munmap(ctx->base, ctx->addr_space_size);
   if (err != 0) return false;
   ctx->base            = NULL;
@@ -492,7 +495,7 @@ static inline bool __yoru_vmem_free_linux(Yoru_Vmem_Ctx *ctx) {
 }
 #    endif
 #    if defined(_WIN32)
-static inline bool __yoru_vmem_reserve_windows(usize size, Yoru_Vmem_Ctx *ctx) {
+bool __yoru_vmem_reserve_windows(usize size, Yoru_Vmem_Ctx *ctx) {
   anyptr ptr = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
   if (!ptr) {
     ctx->base            = NULL;
@@ -515,7 +518,7 @@ bool __yoru_vmem_commit_windows(Yoru_Vmem_Ctx *ctx, usize size) {
   return true;
 }
 
-static inline bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx) {
+bool __yoru_vmem_free_windows(Yoru_Vmem_Ctx *ctx) {
   if (!VirtualFree(ctx->base, ctx->addr_space_size, MEM_RELEASE)) return false;
   ctx->base            = NULL;
   ctx->commit_pos      = 0;
@@ -651,8 +654,6 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
   yoru_vmem_free(c->vmem_ctx);
   free(c->vmem_ctx);
   free(c);
-  c->offset   = 0;
-  c->vmem_ctx = NULL;
 }
 #  endif // YORU_IMPL
 #endif   // Platform Check
@@ -725,7 +726,7 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
     if ((__arr_ptr)->size + 1 > (__arr_ptr)->capacity) {                                                               \
       yoru_arraylist_resize((__arr_ptr), (__arr_ptr)->capacity * 2);                                                   \
     }                                                                                                                  \
-    (__arr_ptr)->items[(__arr_ptr)->size++] = __value;                                                                 \
+    (__arr_ptr)->items[(__arr_ptr)->size++] = (__value);                                                               \
   } while (0);
 
 #define yoru_arraylist_destroy(__arr_ptr)                                                                              \
@@ -738,6 +739,24 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
     (__arr_ptr)->size      = 0;                                                                                        \
     (__arr_ptr)->capacity  = 0;                                                                                        \
     (__arr_ptr)->allocator = NULL;                                                                                     \
+  } while (0)
+
+#define yoru_arraylist_fill(__arr_ptr, __value)                                                                        \
+  do {                                                                                                                 \
+    assert((__arr_ptr));                                                                                               \
+    assert((__arr_ptr)->items);                                                                                        \
+    for (usize __i = 0; __i < (__arr_ptr)->size; ++__i) {                                                              \
+      (__arr_ptr)->items[__i] = __value;                                                                               \
+    }                                                                                                                  \
+    (__arr_ptr)->size = (__arr_ptr)->capacity;                                                                         \
+  } while (0);
+
+#define yoru_arraylist_clear(__arr_ptr)                                                                                \
+  do {                                                                                                                 \
+    assert((__arr_ptr));                                                                                               \
+    assert((__arr_ptr)->items);                                                                                        \
+    memset((__arr_ptr)->items, 0, (__arr_ptr)->capacity * sizeof((__arr_ptr)->items[0]));                              \
+    (__arr_ptr)->size = 0;                                                                                             \
   } while (0)
 
 #define yoru_arraylist_prepend(__arr_ptr, __value)                                                                     \
@@ -757,16 +776,165 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
   do {                                                                                                                 \
     usize item_size = sizeof((__arr_ptr)->items[0]);                                                                   \
     assert((__arr_ptr));                                                                                               \
-    Yoru_Opt maybe_new_ptr = yoru_allocator_realloc((__arr_ptr)->allocator,                                            \
-                                                    (__arr_ptr)->capacity * item_size,                                 \
-                                                    (__arr_ptr)->items,                                                \
-                                                    (__new_capacity) * item_size);                                     \
+    Yoru_Opt maybe_new_ptr = yoru_allocator_realloc(                                                                   \
+        (__arr_ptr)->allocator,                                                                                        \
+        (__arr_ptr)->capacity * item_size,                                                                             \
+        (__arr_ptr)->items,                                                                                            \
+        (__new_capacity) * item_size);                                                                                 \
     assert(maybe_new_ptr.has_value && "could not append new value");                                                   \
     anyptr new_ptr        = maybe_new_ptr.ptr;                                                                         \
     (__arr_ptr)->items    = new_ptr;                                                                                   \
     (__arr_ptr)->size     = (__arr_ptr)->size < (__new_capacity) ? (__arr_ptr)->size : (__new_capacity);               \
     (__arr_ptr)->capacity = (__new_capacity);                                                                          \
   } while (0);
+
+/* ============================================================
+   MODULE: HashMap
+   provides a typesafe hashmap...
+
+   TODO: better error handling... same as with arraylists
+   ============================================================ */
+
+usize yoru_hash_djb2(const char *str);
+
+#define YORU_HASHMAP_INITIAL_CAPACITY (16)
+
+#define YORU_HASHMAP_LOAD_FACTOR (0.75)
+
+#define Yoru_HashMap_Entry_T(__T)                                                                                      \
+  struct {                                                                                                             \
+    cstr key;                                                                                                          \
+    __T  value;                                                                                                        \
+    bool set;                                                                                                          \
+  }
+
+typedef struct {
+  cstr  key;
+  usize index;
+} Yoru_IndexedKey;
+
+#define Yoru_HashMap_Entries_T(__T) Yoru_ArrayList_T(Yoru_HashMap_Entry_T(__T))
+
+#define Yoru_HashMap_T(__T)                                                                                            \
+  struct {                                                                                                             \
+    Yoru_HashMap_Entries_T(__T) entries;                                                                               \
+    Yoru_ArrayList_T(Yoru_IndexedKey) keys;                                                                            \
+    Yoru_Allocator *allocator;                                                                                         \
+  }
+
+#define yoru_hashmap_init(__map_ptr, __allocator_ptr)                                                                  \
+  do {                                                                                                                 \
+    assert((__map_ptr));                                                                                               \
+    yoru_arraylist_init(&(__map_ptr)->entries, (__allocator_ptr), YORU_HASHMAP_INITIAL_CAPACITY);                      \
+    (__map_ptr)->allocator = (__allocator_ptr);                                                                        \
+    yoru_arraylist_init(&(__map_ptr)->keys, (__allocator_ptr), YORU_HASHMAP_INITIAL_CAPACITY);                         \
+  } while (0);
+
+#define yoru_hashmap_destroy(__map_ptr)                                                                                \
+  do {                                                                                                                 \
+    assert((__map_ptr));                                                                                               \
+    yoru_arraylist_destroy(&(__map_ptr)->entries);                                                                     \
+    for (usize i = 0; i < (__map_ptr)->keys.size; ++i) {                                                               \
+      if ((__map_ptr)->keys.items[i].key) free((__map_ptr)->keys.items[i].key);                                        \
+    }                                                                                                                  \
+    yoru_arraylist_destroy(&(__map_ptr)->keys);                                                                        \
+    (__map_ptr)->allocator = NULL;                                                                                     \
+  } while (0);
+
+#define yoru_hashmap_grow_if_needed(__map_ptr)                                                                         \
+  do {                                                                                                                 \
+    assert((__map_ptr));                                                                                               \
+    assert((__map_ptr)->allocator);                                                                                    \
+    Yoru_Allocator *allocator = (__map_ptr)->allocator;                                                                \
+    usize           capacity  = (__map_ptr)->entries.capacity;                                                         \
+    usize           size      = (__map_ptr)->entries.size;                                                             \
+    f64             load      = (f64)size / (f64)capacity;                                                             \
+    /* still within acceptable load -> nothing to do */                                                                \
+    if (load < YORU_HASHMAP_LOAD_FACTOR) break;                                                                        \
+    usize    new_capacity         = 2 * capacity;                                                                      \
+    Yoru_Opt maybe_old_items_copy = yoru_allocator_alloc(allocator, capacity * sizeof((__map_ptr)->entries.items[0])); \
+    assert(maybe_old_items_copy.has_value);                                                                            \
+    anyptr old_items_copy = maybe_old_items_copy.ptr;                                                                  \
+    memcpy(old_items_copy, (__map_ptr)->entries.items, capacity * sizeof((__map_ptr)->entries.items[0]));              \
+    yoru_arraylist_resize(&(__map_ptr)->entries, new_capacity);                                                        \
+    yoru_arraylist_clear(&(__map_ptr)->entries);                                                                       \
+    (__map_ptr)->entries.size = size;                                                                                  \
+    for (usize i = 0; i < (__map_ptr)->keys.size; ++i) {                                                               \
+      cstr  key       = (__map_ptr)->keys.items[i].key;                                                                \
+      usize old_index = (__map_ptr)->keys.items[i].index;                                                              \
+      usize hash      = yoru_hash_djb2(key);                                                                           \
+      usize new_index = hash % new_capacity;                                                                           \
+      /* linear probe to find empty slot */                                                                            \
+      while ((__map_ptr)->entries.items[new_index].set)                                                                \
+        new_index = (new_index + 1) % new_capacity;                                                                    \
+      usize element_size = sizeof((__map_ptr)->entries.items[0]);                                                      \
+      /* copy value from old to new index */                                                                           \
+      memcpy(                                                                                                          \
+          (anyptr)(__map_ptr)->entries.items + element_size * new_index,                                               \
+          (anyptr)old_items_copy + element_size * old_index,                                                           \
+          element_size);                                                                                               \
+      /* update key index */                                                                                           \
+      (__map_ptr)->keys.items[i].index = new_index;                                                                    \
+    }                                                                                                                  \
+    yoru_allocator_dealloc(allocator, old_items_copy);                                                                 \
+  } while (0);
+
+#define yoru_hashmap_set(__map_ptr, __key, __value)                                                                    \
+  do {                                                                                                                 \
+    assert((__map_ptr));                                                                                               \
+    assert((__key));                                                                                                   \
+    yoru_hashmap_grow_if_needed((__map_ptr));                                                                          \
+    usize capacity = (__map_ptr)->entries.capacity;                                                                    \
+    usize hash     = yoru_hash_djb2((__key));                                                                          \
+    usize index    = hash % capacity;                                                                                  \
+    for (usize i = 0; i < capacity; ++i) {                                                                             \
+      /* write for NEW key */                                                                                          \
+      if (!(__map_ptr)->entries.items[index].set) {                                                                    \
+        cstr key_copy                           = strdup((__key));                                                     \
+        (__map_ptr)->entries.items[index].key   = key_copy;                                                            \
+        (__map_ptr)->entries.items[index].value = (__value);                                                           \
+        (__map_ptr)->entries.items[index].set   = true;                                                                \
+        yoru_arraylist_append(&((__map_ptr)->keys), ((Yoru_IndexedKey){.key = key_copy, .index = index}));             \
+        ++(__map_ptr)->entries.size;                                                                                   \
+        break;                                                                                                         \
+      }                                                                                                                \
+      /* overwrite existing key */                                                                                     \
+      if (strcmp((__key), (__map_ptr)->entries.items[index].key) == 0) {                                               \
+        (__map_ptr)->entries.items[index].value = (__value);                                                           \
+        break;                                                                                                         \
+      }                                                                                                                \
+      index = (index + 1) % capacity;                                                                                  \
+    }                                                                                                                  \
+  } while (0)
+
+#define yoru_hashmap_get(__map_ptr, __key, __out_value_ptr)                                                            \
+  do {                                                                                                                 \
+    assert((__map_ptr));                                                                                               \
+    assert((__key));                                                                                                   \
+    assert((__out_value_ptr));                                                                                         \
+    usize capacity = (__map_ptr)->entries.capacity;                                                                    \
+    usize hash     = yoru_hash_djb2((__key));                                                                          \
+    usize index    = hash % capacity;                                                                                  \
+    for (usize i = 0; i < capacity; ++i) {                                                                             \
+      if (!(__map_ptr)->entries.items[index].set) { break; /* key not present */ }                                     \
+      if (strcmp((__key), (__map_ptr)->entries.items[index].key) == 0) {                                               \
+        *(__out_value_ptr) = (__map_ptr)->entries.items[index].value;                                                  \
+        break;                                                                                                         \
+      }                                                                                                                \
+      index = (index + 1) % capacity;                                                                                  \
+    }                                                                                                                  \
+  } while (0)
+
+#ifdef YORU_IMPL
+usize yoru_hash_djb2(const char *str) {
+  usize hash = 5381;
+  int   c;
+
+  while ((c = *str++))
+    hash = ((hash << 5) + hash) + c;
+  return hash;
+}
+#endif
 
 /* ============================================================
    MODULE: StringView
@@ -836,11 +1004,8 @@ yoru_stringview_trim_while(const Yoru_StringView *sv, Yoru_TrimOptions trim_opti
 /// it.
 /// @note  please make sure to destroy the dynamic array when you dont need it
 /// anymore
-Yoru_StringViews yoru_stringview_split_by_char(const Yoru_StringView *sv,
-                                               Yoru_Allocator        *allocator,
-                                               usize                  max_split_count,
-                                               char                   separator,
-                                               bool                   remove_empty);
+Yoru_StringViews yoru_stringview_split_by_char(
+    const Yoru_StringView *sv, Yoru_Allocator *allocator, usize max_split_count, char separator, bool remove_empty);
 
 #ifdef YORU_IMPL
 Yoru_StringView yoru_stringview_skip(const Yoru_StringView *sv, usize skip) {
@@ -960,11 +1125,8 @@ __yoru_stringview_trim_core(const Yoru_StringView *sv, Yoru_TrimOptions trim_opt
   };
 }
 
-Yoru_StringViews yoru_stringview_split_by_char(const Yoru_StringView *sv,
-                                               Yoru_Allocator        *allocator,
-                                               usize                  max_split_count,
-                                               char                   separator,
-                                               bool                   remove_empty) {
+Yoru_StringViews yoru_stringview_split_by_char(
+    const Yoru_StringView *sv, Yoru_Allocator *allocator, usize max_split_count, char separator, bool remove_empty) {
   assert(sv && sv->data && allocator);
 
   max_split_count              = max_split_count == USIZE_MAX ? YORU_ARRAYLIST_INITIAL_CAPACITY : max_split_count;
@@ -1193,6 +1355,15 @@ Yoru_String yoru_file_read(Yoru_Allocator *allocator, const char *filepath);
 /// and returns content in a string
 Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath, usize offset_bytes, usize max_bytes);
 
+/// @brief writes `nbytes` of `bytes` to position `offset` file at path `filepath`
+/// @note if `offset` is greater than the size of the file it will just append them instead
+/// returns `true` on success, else `false`
+bool yoru_file_write_exact(const char *filepath, const u8 *bytes, usize nbytes, usize offset);
+
+/// @brief writes `nbytes` of `bytes` to end of file at path `filepath`
+/// returns `true` on success, else `false`
+bool yoru_file_append_exact(const char *filepath, const u8 *bytes, usize nbytes);
+
 /// @brief returns the file's size in bytes
 usize yoru_file_get_size(const char *filepath);
 
@@ -1231,6 +1402,32 @@ cleanup:
   if (file) fclose(file);
   res.data = NULL;
   return res;
+}
+
+bool yoru_file_write_exact(const char *filepath, const u8 *bytes, usize nbytes, usize offset) {
+  assert(filepath);
+  assert(bytes);
+
+  usize       file_size = yoru_file_get_size(filepath);
+  const char *mode      = "w";
+  if (offset >= file_size) {
+    offset = file_size;
+    mode   = "a";
+  }
+
+  FILE *file = fopen(filepath, mode);
+  if (!file) return false;
+
+  usize written = fwrite((anyptr)bytes, sizeof(u8), nbytes, file);
+  fclose(file);
+  return written == nbytes;
+}
+
+bool yoru_file_append_exact(const char *filepath, const u8 *bytes, usize nbytes) {
+  assert(filepath);
+  assert(bytes);
+  usize file_size = yoru_file_get_size(filepath);
+  return yoru_file_write_exact(filepath, bytes, nbytes, file_size);
 }
 
 usize yoru_file_get_size(const char *filepath) {
