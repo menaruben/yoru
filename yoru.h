@@ -1394,7 +1394,7 @@ Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath
   if (!yoru_string_make(allocator, read_size, NULL, &res)) goto cleanup;
 
   fseek(file, offset_bytes, SEEK_SET);
-  fread((anyptr)res.data, sizeof(u8), res.length, file);
+  (void)fread((anyptr)res.data, sizeof(u8), res.length, file);
   fclose(file);
   return res;
 
@@ -1440,4 +1440,175 @@ usize yoru_file_get_size(const char *filepath) {
   return size;
 }
 #endif // YORU_IMPL
+
+/* ============================================================
+   MODULE: Vectors
+   TODO:   add SIMD optimizations
+   ============================================================ */
+
+#define Yoru_Vec_T(__T, __N)                                                                                           \
+  struct {                                                                                                             \
+    __T   elements[__N];                                                                                               \
+    usize element_count;                                                                                               \
+  }
+
+typedef Yoru_Vec_T(i64, 2) Yoru_Vec2_I64;
+#define yoru_vec2_i64_make(__x, __y) (Yoru_Vec2_I64){.elements = {(__x), __y}, .element_count = 2}
+
+typedef Yoru_Vec_T(i64, 3) Yoru_Vec3_I64;
+#define yoru_vec3_i64_make(__x, __y, __z) ((Yoru_Vec3_I64){.elements = {(__x), (__y), (__z)}, .element_count = 3})
+
+typedef Yoru_Vec_T(i64, 4) Yoru_Vec4_I64;
+#define yoru_vec4_i64_make(__x, __y, __z, __t)                                                                         \
+  ((Yoru_Vec2_I64){.elements = {(__x), (__y), (__z), (__t)}, .element_count = 4})
+
+// Element-wise addition
+#define yoru_vec_add(__a_ptr, __b_ptr, __out_ptr)                                                                      \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] + (__b_ptr)->elements[__i];                                \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
+  } while (0)
+
+// Element-wise subtraction
+#define yoru_vec_sub(__a_ptr, __b_ptr, __out_ptr)                                                                      \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] - (__b_ptr)->elements[__i];                                \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
+  } while (0)
+
+// Element-wise multiplication (Hadamard product)
+#define yoru_vec_mul(__a_ptr, __b_ptr, __out_ptr)                                                                      \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] * (__b_ptr)->elements[__i];                                \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
+  } while (0)
+
+// Element-wise division
+#define yoru_vec_div(__a_ptr, __b_ptr, __out_ptr)                                                                      \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] / (__b_ptr)->elements[__i];                                \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
+  } while (0)
+
+// Scalar multiplication: out = v * scalar
+#define yoru_vec_scale(__v_ptr, __scalar, __out_ptr)                                                                   \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] = (__v_ptr)->elements[__i] * (__scalar);                                              \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__v_ptr)->element_count;                                                             \
+  } while (0)
+
+// Negate all elements
+#define yoru_vec_negate(__v_ptr, __out_ptr)                                                                            \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] = -(__v_ptr)->elements[__i];                                                          \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__v_ptr)->element_count;                                                             \
+  } while (0)
+
+// Dot product
+#define yoru_vec_dot(__a_ptr, __b_ptr, __result_ptr)                                                                   \
+  do {                                                                                                                 \
+    *(__result_ptr) = 0;                                                                                               \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      *(__result_ptr) += (__a_ptr)->elements[__i] * (__b_ptr)->elements[__i];                                          \
+    }                                                                                                                  \
+  } while (0)
+
+// Squared length
+#define yoru_vec_length_squared(__v_ptr, __result_ptr)                                                                 \
+  do {                                                                                                                 \
+    *(__result_ptr) = 0;                                                                                               \
+    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
+      *(__result_ptr) += (__v_ptr)->elements[__i] * (__v_ptr)->elements[__i];                                          \
+    }                                                                                                                  \
+  } while (0)
+
+// Squared distance between two points
+#define yoru_vec_distance_squared(__a_ptr, __b_ptr, __result_ptr)                                                      \
+  do {                                                                                                                 \
+    *(__result_ptr) = 0;                                                                                               \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      *(__result_ptr) += ((__a_ptr)->elements[__i] - (__b_ptr)->elements[__i]) *                                       \
+                         ((__a_ptr)->elements[__i] - (__b_ptr)->elements[__i]);                                        \
+    }                                                                                                                  \
+  } while (0)
+
+// Element-wise minimum
+#define yoru_vec_min(__a_ptr, __b_ptr, __out_ptr)                                                                      \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] =                                                                                     \
+          (__a_ptr)->elements[__i] < (__b_ptr)->elements[__i] ? (__a_ptr)->elements[__i] : (__b_ptr)->elements[__i];   \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
+  } while (0)
+
+// Element-wise maximum
+#define yoru_vec_max(__a_ptr, __b_ptr, __out_ptr)                                                                      \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
+      (__out_ptr)->elements[__i] =                                                                                     \
+          (__a_ptr)->elements[__i] > (__b_ptr)->elements[__i] ? (__a_ptr)->elements[__i] : (__b_ptr)->elements[__i];   \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
+  } while (0)
+
+// Clamp each element to range [min, max]
+#define yoru_vec_clamp(__v_ptr, __min, __max, __out_ptr)                                                               \
+  do {                                                                                                                 \
+    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
+      if ((__v_ptr)->elements[__i] < (__min)) {                                                                        \
+        (__out_ptr)->elements[__i] = (__min);                                                                          \
+      } else if ((__v_ptr)->elements[__i] > (__max)) {                                                                 \
+        (__out_ptr)->elements[__i] = (__max);                                                                          \
+      } else {                                                                                                         \
+        (__out_ptr)->elements[__i] = (__v_ptr)->elements[__i];                                                         \
+      }                                                                                                                \
+    }                                                                                                                  \
+    (__out_ptr)->element_count = (__v_ptr)->element_count;                                                             \
+  } while (0)
+
+// Cross product (3D vectors only)
+// Result is perpendicular to both input vectors
+#define yoru_vec3_cross(__a_ptr, __b_ptr, __out_ptr)                                                                   \
+  do {                                                                                                                 \
+    (__out_ptr)->elements[0] =                                                                                         \
+        (__a_ptr)->elements[1] * (__b_ptr)->elements[2] - (__a_ptr)->elements[2] * (__b_ptr)->elements[1];             \
+    (__out_ptr)->elements[1] =                                                                                         \
+        (__a_ptr)->elements[2] * (__b_ptr)->elements[0] - (__a_ptr)->elements[0] * (__b_ptr)->elements[2];             \
+    (__out_ptr)->elements[2] =                                                                                         \
+        (__a_ptr)->elements[0] * (__b_ptr)->elements[1] - (__a_ptr)->elements[1] * (__b_ptr)->elements[0];             \
+    (__out_ptr)->element_count = 3;                                                                                    \
+  } while (0)
+
+/* ============================================================
+   MODULE: Matrices
+   TODO:
+           - add SIMD optimizations
+           - add operations
+   ============================================================ */
+
+// column-major matrix
+#define Yoru_Mat_T(__T, __ROWS, __COLS)                                                                                \
+  struct {                                                                                                             \
+    Yoru_Vec_T(__T, __ROWS) cols[__COLS];                                                                              \
+    usize nrows;                                                                                                       \
+    usize ncols;                                                                                                       \
+  }
+
+typedef Yoru_Mat_T(i64, 2, 2) Yoru_Mat2x2_I64;
+typedef Yoru_Mat_T(i64, 3, 3) Yoru_Mat3x3_I64;
+typedef Yoru_Mat_T(i64, 4, 4) Yoru_Mat4x4_I64;
+
 #endif // __YORU_H__
