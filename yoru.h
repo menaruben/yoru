@@ -1445,9 +1445,14 @@ usize yoru_file_get_size(const char *filepath) {
 
 /* ============================================================
    MODULE: Vectors
+
+   NOTE: There are Vec2, Vec3, Vec4 for f64 predefined with their
+   functions. If you are using another typedef for the vectors
+   look at how the funcs are defined (usually in a core func) and
+   really short. In the future we want to provide a generic interface
+   for other funcs too
    
    TODO:   - [] add SIMD optimizations
-           - [] add generic way to define funcs
    ============================================================ */
 
 #define Yoru_Vec_T(__T, __N)                                                                                           \
@@ -1509,7 +1514,6 @@ Yoru_VecErr yoru_vec4_min_between(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *
 Yoru_VecErr yoru_vec3_cross(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
 
 #ifdef YORU_IMPL
-
 static inline Yoru_VecErr yoru_vec_add_core(usize n, const f64 *v1, const f64 *v2, f64 *out_v) {
   if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
   for (usize i = 0; i < n; ++i)
