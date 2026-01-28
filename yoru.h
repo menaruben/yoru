@@ -44,9 +44,11 @@
 #define USIZE_MAX SIZE_MAX
 #define PTR_SIZE sizeof(void *)
 
-#define YORU_ARRAY_LEN(__arr) (sizeof(arr) / sizeof(arr[0]))
-#define YORU_TODO(__msg) assert(false && __msg)
+#define YORU_ARRAY_LEN(__arr) (sizeof(__arr) / sizeof(__arr[0]))
+#define YORU_TODO(__msg) assert(false && "TODO: "__msg)
 #define YORU_NAMEOF(__x) (#__x)
+#define YORU_MAX(_a, _b) ((_a) < (_b) ? (_b) : (_a))
+#define YORU_MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 
 typedef int8_t        i8;
 typedef uint8_t       u8;
@@ -1448,148 +1450,139 @@ usize yoru_file_get_size(const char *filepath) {
 
 #define Yoru_Vec_T(__T, __N)                                                                                           \
   struct {                                                                                                             \
-    __T   elements[__N];                                                                                               \
-    usize element_count;                                                                                               \
+    __T elements[__N];                                                                                                 \
+  }
+
+#define yoru_vec_make(...)                                                                                             \
+  {                                                                                                                    \
+    .elements = { __VA_ARGS__ }                                                                                        \
   }
 
 typedef Yoru_Vec_T(i64, 2) Yoru_Vec2_I64;
-#define yoru_vec2_i64_make(__x, __y) (Yoru_Vec2_I64){.elements = {(__x), __y}, .element_count = 2}
-
 typedef Yoru_Vec_T(i64, 3) Yoru_Vec3_I64;
-#define yoru_vec3_i64_make(__x, __y, __z) ((Yoru_Vec3_I64){.elements = {(__x), (__y), (__z)}, .element_count = 3})
-
 typedef Yoru_Vec_T(i64, 4) Yoru_Vec4_I64;
-#define yoru_vec4_i64_make(__x, __y, __z, __t)                                                                         \
-  ((Yoru_Vec2_I64){.elements = {(__x), (__y), (__z), (__t)}, .element_count = 4})
+
+typedef enum {
+  YORU_VEC_ERR_OK                    = (1 << 0),
+  YORU_VEC_ERR_NULL                  = (1 << 1),
+  YORU_VEC_ERR_MISMATCHED_DIMENSIONS = (1 << 2),
+} Yoru_VecErr;
+
+#define _yoru_vec_check_args(_p_a, _p_b, _p_out, _p_err)                                                               \
+  do {                                                                                                                 \
+    if (!(_p_a)) {                                                                                                     \
+      *(_p_err) = YORU_VEC_ERR_NULL;                                                                                   \
+      break;                                                                                                           \
+    }                                                                                                                  \
+    if (!(_p_b)) {                                                                                                     \
+      *(_p_err) = YORU_VEC_ERR_NULL;                                                                                   \
+      break;                                                                                                           \
+    }                                                                                                                  \
+    if (!(_p_out)) {                                                                                                   \
+      *(_p_err) = YORU_VEC_ERR_NULL;                                                                                   \
+      break;                                                                                                           \
+    }                                                                                                                  \
+    usize a_len = YORU_ARRAY_LEN((_p_a)->elements);                                                                    \
+    usize b_len = YORU_ARRAY_LEN((_p_b)->elements);                                                                    \
+    if (a_len != b_len) {                                                                                              \
+      *(_p_err) = YORU_VEC_ERR_MISMATCHED_DIMENSIONS;                                                                  \
+      break;                                                                                                           \
+    }                                                                                                                  \
+  } while (0);
+
+#define __yoru_vec_element_wise(_binop, _p_a, _p_b, _p_out, _p_err)                                                    \
+  do {                                                                                                                 \
+    _yoru_vec_check_args(_p_a, _p_b, _p_out, _p_err);                                                                  \
+    if (*(_p_err) != YORU_VEC_ERR_OK) break;                                                                           \
+    usize a_len = YORU_ARRAY_LEN((_p_a)->elements);                                                                    \
+    for (usize i = 0; i < a_len; ++i)                                                                                  \
+      (_p_out)->elements[i] = _binop((_p_a)->elements[i], (_p_b)->elements[i]);                                        \
+    *(_p_err) = YORU_VEC_ERR_OK;                                                                                       \
+  } while (0)
 
 // Element-wise addition
-#define yoru_vec_add(__a_ptr, __b_ptr, __out_ptr)                                                                      \
-  do {                                                                                                                 \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] + (__b_ptr)->elements[__i];                                \
-    }                                                                                                                  \
-    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
-  } while (0)
+#define __yoru_binop_add(_a, _b) ((_a) + (_b))
+#define yoru_vec_add(_p_a, _p_b, _p_out, _p_err) __yoru_vec_element_wise(__yoru_binop_add, _p_a, _p_b, _p_out, _p_err)
 
 // Element-wise subtraction
-#define yoru_vec_sub(__a_ptr, __b_ptr, __out_ptr)                                                                      \
-  do {                                                                                                                 \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] - (__b_ptr)->elements[__i];                                \
-    }                                                                                                                  \
-    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
-  } while (0)
+#define __yoru_binop_sub(_a, _b) ((_a) - (_b))
+#define yoru_vec_sub(_p_a, _p_b, _p_out, _p_err) __yoru_vec_element_wise(__yoru_binop_sub, _p_a, _p_b, _p_out, _p_err)
 
 // Element-wise multiplication (Hadamard product)
-#define yoru_vec_mul(__a_ptr, __b_ptr, __out_ptr)                                                                      \
-  do {                                                                                                                 \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] * (__b_ptr)->elements[__i];                                \
-    }                                                                                                                  \
-    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
-  } while (0)
+#define __yoru_binop_mul(_a, _b) ((_a) * (_b))
+#define yoru_vec_mul(_p_a, _p_b, _p_out, _p_err) __yoru_vec_element_wise(__yoru_binop_mul, _p_a, _p_b, _p_out, _p_err)
 
 // Element-wise division
-#define yoru_vec_div(__a_ptr, __b_ptr, __out_ptr)                                                                      \
+#define __yoru_binop_div(_a, _b) ((_a) / (_b))
+#define yoru_vec_div(_p_a, _p_b, _p_out, _p_err) __yoru_vec_element_wise(__yoru_binop_div, _p_a, _p_b, _p_out, _p_err)
+
+// Dot product
+#define yoru_vec_dot(_p_a, _p_b, _out, _p_err)                                                                         \
   do {                                                                                                                 \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] = (__a_ptr)->elements[__i] / (__b_ptr)->elements[__i];                                \
+    if (!(_p_a) || !(_p_b)) {                                                                                          \
+      *(_p_err) = YORU_VEC_ERR_NULL;                                                                                   \
+      break;                                                                                                           \
     }                                                                                                                  \
-    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
+    _out = 0;                                                                                                          \
+    if (*(_p_err) != YORU_VEC_ERR_OK) break;                                                                           \
+    usize a_len = YORU_ARRAY_LEN((_p_a)->elements);                                                                    \
+    for (usize i = 0; i < a_len; ++i)                                                                                  \
+      _out += (_p_a)->elements[i] * (_p_b)->elements[i];                                                               \
+    *(_p_err) = YORU_VEC_ERR_OK;                                                                                       \
   } while (0)
 
 // Scalar multiplication: out = v * scalar
-#define yoru_vec_scale(__v_ptr, __scalar, __out_ptr)                                                                   \
+#define yoru_vec_scale(_p_v, _scalar, _p_out, _p_err)                                                                  \
   do {                                                                                                                 \
-    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] = (__v_ptr)->elements[__i] * (__scalar);                                              \
+    if (!(_p_v) || !(_p_out)) {                                                                                        \
+      *(_p_err) = YORU_VEC_ERR_NULL;                                                                                   \
+      break;                                                                                                           \
     }                                                                                                                  \
-    (__out_ptr)->element_count = (__v_ptr)->element_count;                                                             \
+    usize a_len = YORU_ARRAY_LEN((_p_v)->elements);                                                                    \
+    for (usize i = 0; i < a_len; ++i)                                                                                  \
+      (_p_out)->elements[i] = (_p_v)->elements[i] * (_scalar);                                                         \
+    *(_p_err) = YORU_VEC_ERR_OK;                                                                                       \
   } while (0)
 
 // Negate all elements
-#define yoru_vec_negate(__v_ptr, __out_ptr)                                                                            \
-  do {                                                                                                                 \
-    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] = -(__v_ptr)->elements[__i];                                                          \
-    }                                                                                                                  \
-    (__out_ptr)->element_count = (__v_ptr)->element_count;                                                             \
-  } while (0)
-
-// Dot product
-#define yoru_vec_dot(__a_ptr, __b_ptr, __result_ptr)                                                                   \
-  do {                                                                                                                 \
-    *(__result_ptr) = 0;                                                                                               \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      *(__result_ptr) += (__a_ptr)->elements[__i] * (__b_ptr)->elements[__i];                                          \
-    }                                                                                                                  \
-  } while (0)
+#define yoru_vec_negate(_p_v, _p_out, _p_err) yoru_vec_scale(_p_v, (-1), _p_out, _p_err)
 
 // Squared length
-#define yoru_vec_length_squared(__v_ptr, __result_ptr)                                                                 \
+#define yoru_vec_length_squared(_p_v, _p_out, _p_err)                                                                  \
   do {                                                                                                                 \
-    *(__result_ptr) = 0;                                                                                               \
-    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
-      *(__result_ptr) += (__v_ptr)->elements[__i] * (__v_ptr)->elements[__i];                                          \
+    *(_p_out) = 0;                                                                                                     \
+    if (!(_p_v) || !(_p_out)) {                                                                                        \
+      *(_p_err) = YORU_VEC_ERR_NULL;                                                                                   \
+      break;                                                                                                           \
     }                                                                                                                  \
-  } while (0)
-
-// Squared distance between two points
-#define yoru_vec_distance_squared(__a_ptr, __b_ptr, __result_ptr)                                                      \
-  do {                                                                                                                 \
-    *(__result_ptr) = 0;                                                                                               \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      *(__result_ptr) += ((__a_ptr)->elements[__i] - (__b_ptr)->elements[__i]) *                                       \
-                         ((__a_ptr)->elements[__i] - (__b_ptr)->elements[__i]);                                        \
-    }                                                                                                                  \
+    usize a_len = YORU_ARRAY_LEN((_p_v)->elements);                                                                    \
+    for (usize i = 0; i < a_len; ++i)                                                                                  \
+      *(_p_out) += (_p_v)->elements[i] * (_p_v)->elements[i];                                                          \
+    *(_p_err) = YORU_VEC_ERR_OK;                                                                                       \
   } while (0)
 
 // Element-wise minimum
-#define yoru_vec_min(__a_ptr, __b_ptr, __out_ptr)                                                                      \
-  do {                                                                                                                 \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] =                                                                                     \
-          (__a_ptr)->elements[__i] < (__b_ptr)->elements[__i] ? (__a_ptr)->elements[__i] : (__b_ptr)->elements[__i];   \
-    }                                                                                                                  \
-    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
-  } while (0)
+#define yoru_vec_min(_p_a, _p_b, _p_out, _p_err) __yoru_vec_element_wise(YORU_MIN, _p_a, _p_b, _p_out, _p_err)
 
 // Element-wise maximum
-#define yoru_vec_max(__a_ptr, __b_ptr, __out_ptr)                                                                      \
-  do {                                                                                                                 \
-    for (usize __i = 0; __i < (__a_ptr)->element_count; __i++) {                                                       \
-      (__out_ptr)->elements[__i] =                                                                                     \
-          (__a_ptr)->elements[__i] > (__b_ptr)->elements[__i] ? (__a_ptr)->elements[__i] : (__b_ptr)->elements[__i];   \
-    }                                                                                                                  \
-    (__out_ptr)->element_count = (__a_ptr)->element_count;                                                             \
-  } while (0)
-
-// Clamp each element to range [min, max]
-#define yoru_vec_clamp(__v_ptr, __min, __max, __out_ptr)                                                               \
-  do {                                                                                                                 \
-    for (usize __i = 0; __i < (__v_ptr)->element_count; __i++) {                                                       \
-      if ((__v_ptr)->elements[__i] < (__min)) {                                                                        \
-        (__out_ptr)->elements[__i] = (__min);                                                                          \
-      } else if ((__v_ptr)->elements[__i] > (__max)) {                                                                 \
-        (__out_ptr)->elements[__i] = (__max);                                                                          \
-      } else {                                                                                                         \
-        (__out_ptr)->elements[__i] = (__v_ptr)->elements[__i];                                                         \
-      }                                                                                                                \
-    }                                                                                                                  \
-    (__out_ptr)->element_count = (__v_ptr)->element_count;                                                             \
-  } while (0)
+#define yoru_vec_max(_p_a, _p_b, _p_out, _p_err) __yoru_vec_element_wise(YORU_MAX, _p_a, _p_b, _p_out, _p_err)
 
 // Cross product (3D vectors only)
 // Result is perpendicular to both input vectors
-#define yoru_vec3_cross(__a_ptr, __b_ptr, __out_ptr)                                                                   \
+#define yoru_vec3_cross(_p_a, _p_b, _p_out, _p_err)                                                                    \
   do {                                                                                                                 \
-    (__out_ptr)->elements[0] =                                                                                         \
-        (__a_ptr)->elements[1] * (__b_ptr)->elements[2] - (__a_ptr)->elements[2] * (__b_ptr)->elements[1];             \
-    (__out_ptr)->elements[1] =                                                                                         \
-        (__a_ptr)->elements[2] * (__b_ptr)->elements[0] - (__a_ptr)->elements[0] * (__b_ptr)->elements[2];             \
-    (__out_ptr)->elements[2] =                                                                                         \
-        (__a_ptr)->elements[0] * (__b_ptr)->elements[1] - (__a_ptr)->elements[1] * (__b_ptr)->elements[0];             \
-    (__out_ptr)->element_count = 3;                                                                                    \
+    if (!(_p_a) || !(_p_b) || !(_p_out)) {                                                                             \
+      *(_p_err) = YORU_VEC_ERR_NULL;                                                                                   \
+      break;                                                                                                           \
+    }                                                                                                                  \
+    if (YORU_ARRAY_LEN((_p_a)->elements) != 3 || YORU_ARRAY_LEN((_p_b)->elements) != 3) {                              \
+      *(_p_err) = YORU_VEC_ERR_MISMATCHED_DIMENSIONS;                                                                  \
+      break;                                                                                                           \
+    }                                                                                                                  \
+    (_p_out)->elements[0] = (_p_a)->elements[1] * (_p_b)->elements[2] - (_p_a)->elements[2] * (_p_b)->elements[1];     \
+    (_p_out)->elements[1] = (_p_a)->elements[2] * (_p_b)->elements[0] - (_p_a)->elements[0] * (_p_b)->elements[2];     \
+    (_p_out)->elements[2] = (_p_a)->elements[0] * (_p_b)->elements[1] - (_p_a)->elements[1] * (_p_b)->elements[0];     \
+    *(_p_err)             = YORU_VEC_ERR_OK;                                                                           \
   } while (0)
 
 /* ============================================================
