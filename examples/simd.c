@@ -9,43 +9,45 @@
 
 const int ITERATIONS = 4000000;
 
-// Naive addition for arbitrary length
-void vec_naive_add(usize n, const f64 *v1, const f64 *v2, f64 *res) {
+void vec_naive_dot(usize n, const f64 *v1, const f64 *v2, f64 *res) {
   for (usize i = 0; i < n; ++i)
-    res[i] = v1[i] + v2[i];
+    *res += v1[i] * v2[i];
 }
 
-// SIMD addition for arbitrary length
-void vec_simd_add(usize n, const f64 *v1, const f64 *v2, f64 *res) {
-#ifdef __AVX__
-  usize i = 0;
-  for (; i + 4 <= n; i += 4) { // Process 4 doubles at a time
+void vec_simd_dot(usize n, const f64 *v1, const f64 *v2, f64 *res) {
+#if defined(__AVX__)
+  usize i      = 0;
+  f64  *temp_v = calloc(n, sizeof(f64));
+  assert(temp_v);
+  for (; i + 4 <= n; i += 4) {
     __m256d a = _mm256_loadu_pd(&v1[i]);
     __m256d b = _mm256_loadu_pd(&v2[i]);
-    _mm256_storeu_pd(&res[i], _mm256_add_pd(a, b));
+    _mm256_storeu_pd(&temp_v[i], _mm256_mul_pd(a, b));
   }
-  // Handle remaining elements
   for (; i < n; ++i)
-    res[i] = v1[i] + v2[i];
+    temp_v[i] = v1[i] * v2[i];
+
+  for (usize x = 0; x < n; ++x)
+    *res += temp_v[x];
+  free(temp_v);
 #else
-  // fallback to naive if no AVX
-  vec_naive_add(n, v1, v2, res);
+  // vec_naive_dot(n, v1, v2, res);
+  assert(false);
 #endif
 }
 
-// Yoru wrapper (uses your core library)
-void vec_yoru_add(usize n, const f64 *v1, const f64 *v2, f64 *res) {
-  assert(yoru_vec_add(n, v1, v2, res) == YORU_VEC_ERR_OK);
+void vec_yoru_dot(usize n, const f64 *v1, const f64 *v2, f64 *res) {
+  assert(yoru_vec_dot(n, v1, v2, res) == YORU_VEC_ERR_OK);
 }
 
 // ---------------- Benchmarking ----------------
 
-double time_vec_add(usize n, void (*add_func)(usize, const f64 *, const f64 *, f64 *)) {
+double time_vec_dot(usize n, void (*dot_func)(usize, const f64 *, const f64 *, f64 *)) {
   f64 *v1  = malloc(sizeof(f64) * n);
   f64 *v2  = malloc(sizeof(f64) * n);
-  f64 *res = malloc(sizeof(f64) * n);
+  f64  res = 0;
 
-  if (!v1 || !v2 || !res) {
+  if (!v1 || !v2) {
     fprintf(stderr, "allocation failed\n");
     exit(1);
   }
@@ -59,14 +61,13 @@ double time_vec_add(usize n, void (*add_func)(usize, const f64 *, const f64 *, f
   clock_t start = clock();
 
   for (int iter = 0; iter < ITERATIONS; ++iter) {
-    add_func(n, v1, v2, res);
+    dot_func(n, v1, v2, &res);
   }
 
   clock_t end = clock();
 
   free(v1);
   free(v2);
-  free(res);
 
   return (double)(end - start) / CLOCKS_PER_SEC;
 }
@@ -77,44 +78,54 @@ int main() {
   srand((unsigned int)time(NULL));
 
   printf("=== Timing Vec2 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(2, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(2, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(2, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(2, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(2, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(2, vec_yoru_dot));
 
   printf("\n=== Timing Vec3 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(3, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(3, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(3, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(3, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(3, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(3, vec_yoru_dot));
 
   printf("\n=== Timing Vec4 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(4, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(4, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(4, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(4, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(4, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(4, vec_yoru_dot));
 
   printf("\n=== Timing Vec10 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(10, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(10, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(10, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(10, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(10, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(10, vec_yoru_dot));
 
   printf("\n=== Timing Vec20 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(20, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(20, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(20, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(20, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(20, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(20, vec_yoru_dot));
 
   printf("\n=== Timing Vec256 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(256, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(256, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(256, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(256, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(256, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(256, vec_yoru_dot));
 
   printf("\n=== Timing Vec2048 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(2048, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(2048, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(2048, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(2048, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(2048, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(2048, vec_yoru_dot));
 
   printf("\n=== Timing Vec8192 ===\n");
-  printf("SIMD:  %f sec\n", time_vec_add(8192, vec_simd_add));
-  printf("Naive: %f sec\n", time_vec_add(8192, vec_naive_add));
-  printf("Yoru:  %f sec\n", time_vec_add(8192, vec_yoru_add));
+  printf("SIMD:  %f sec\n", time_vec_dot(8192, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(8192, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(8192, vec_yoru_dot));
+
+  printf("\n=== Timing Vec16384 ===\n");
+  printf("SIMD:  %f sec\n", time_vec_dot(16384, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(16384, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(16384, vec_yoru_dot));
+
+  printf("\n=== Timing Vec32768 ===\n");
+  printf("SIMD:  %f sec\n", time_vec_dot(32768, vec_simd_dot));
+  printf("Naive: %f sec\n", time_vec_dot(32768, vec_naive_dot));
+  printf("Yoru:  %f sec\n", time_vec_dot(32768, vec_yoru_dot));
 
   return 0;
 }

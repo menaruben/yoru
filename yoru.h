@@ -1448,13 +1448,12 @@ usize yoru_file_get_size(const char *filepath) {
 
    NOTE: There are Vec2, Vec3, Vec4 for f64 predefined with their
    functions. If you are using another typedef for the vectors
-   look at how the funcs are defined (usually in a core func) and
-   really short. In the future we want to provide a generic interface
-   for other funcs too
-   
-   TODO:   - [] add SIMD optimizations
-                -> Do I really want manual SIMD optimizations or should
-                   I just trust the C compiler with O3?
+   use the general `yoru_vec_<op>` functions.
+
+   Also make sure to run with optimization flags like
+   `-O3` or `-ffast-math` and so on. Otherwise some functions may
+   not get optimized with for example auto vectorization.
+ 
    ============================================================ */
 
 #define Yoru_Vec_T(__T, __N)                                                                                           \
@@ -1524,31 +1523,18 @@ Yoru_VecErr yoru_vec4_min_between(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *
 
 Yoru_VecErr yoru_vec3_cross(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
 
-#if defined(__AVX__) && defined(YORU_USE_SIMD)
-#  include <immintrin.h>
-#endif
+#ifdef YORU_USE_SIMD
+#  if defined(__AVX__)
+#    define YORU_SIMD_AVX
+#    include <immintrin.h>
+#  endif // __AVX__
+#endif   // YORU_USE_SIMD
 
 #ifdef YORU_IMPL
 Yoru_VecErr yoru_vec_add(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
   if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
-
-#  if defined(__AVX__) && defined(YORU_USE_SIMD)
-  usize i = 0;
-  if (n > 3) {
-    usize batch_size = 4;
-    for (; i + batch_size <= n; i += batch_size) {
-      __m256d a = _mm256_loadu_pd(&v1[i]);
-      __m256d b = _mm256_loadu_pd(&v2[i]);
-      _mm256_storeu_pd(&out_v[i], _mm256_add_pd(a, b));
-    }
-  }
-
-  for (; i < n; ++i)
-    out_v[i] = v1[i] + v2[i];
-#  else // fallback scalar
   for (usize i = 0; i < n; ++i)
     out_v[i] = v1[i] + v2[i];
-#  endif
   return YORU_VEC_ERR_OK;
 }
 
@@ -1566,24 +1552,8 @@ Yoru_VecErr yoru_vec4_add(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru
 
 Yoru_VecErr yoru_vec_sub(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
   if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
-
-#  if defined(__AVX__) && defined(YORU_USE_SIMD)
-  usize i = 0;
-  if (n > 3) {
-    usize batch_size = 4;
-    for (; i + batch_size <= n; i += batch_size) {
-      __m256d a = _mm256_loadu_pd(&v1[i]);
-      __m256d b = _mm256_loadu_pd(&v2[i]);
-      _mm256_storeu_pd(&out_v[i], _mm256_sub_pd(a, b));
-    }
-  }
-
-  for (; i < n; ++i)
-    out_v[i] = v1[i] - v2[i];
-#  else // fallback scalar
   for (usize i = 0; i < n; ++i)
     out_v[i] = v1[i] - v2[i];
-#  endif
   return YORU_VEC_ERR_OK;
 }
 
@@ -1601,24 +1571,8 @@ Yoru_VecErr yoru_vec4_sub(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru
 
 Yoru_VecErr yoru_vec_mul(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
   if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
-
-#  if defined(__AVX__) && defined(YORU_USE_SIMD)
-  usize i = 0;
-  if (n > 3) {
-    usize batch_size = 4;
-    for (; i + batch_size <= n; i += batch_size) {
-      __m256d a = _mm256_loadu_pd(&v1[i]);
-      __m256d b = _mm256_loadu_pd(&v2[i]);
-      _mm256_storeu_pd(&out_v[i], _mm256_mul_pd(a, b));
-    }
-  }
-
-  for (; i < n; ++i)
-    out_v[i] = v1[i] * v2[i];
-#  else // fallback scalar
   for (usize i = 0; i < n; ++i)
     out_v[i] = v1[i] * v2[i];
-#  endif
   return YORU_VEC_ERR_OK;
 }
 
@@ -1636,24 +1590,8 @@ Yoru_VecErr yoru_vec4_mul(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru
 
 Yoru_VecErr yoru_vec_div(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
   if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
-
-#  if defined(__AVX__) && defined(YORU_USE_SIMD)
-  usize i = 0;
-  if (n > 3) {
-    usize batch_size = 4;
-    for (; i + batch_size <= n; i += batch_size) {
-      __m256d a = _mm256_loadu_pd(&v1[i]);
-      __m256d b = _mm256_loadu_pd(&v2[i]);
-      _mm256_storeu_pd(&out_v[i], _mm256_div_pd(a, b));
-    }
-  }
-
-  for (; i < n; ++i)
-    out_v[i] = v1[i] / v2[i];
-#  else // fallback scalar
   for (usize i = 0; i < n; ++i)
     out_v[i] = v1[i] / v2[i];
-#  endif
   return YORU_VEC_ERR_OK;
 }
 
@@ -1669,11 +1607,60 @@ Yoru_VecErr yoru_vec4_div(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru
   return yoru_vec_div(4, v1->elements, v2->elements, out_v->elements);
 }
 
+// Yoru_VecErr yoru_vec_dot(usize n, const f64 v1[static n], const f64 v2[static n], f64 *out) {
+//   if (n == 0 || !v1 || !v2 || !out) return YORU_VEC_ERR_NULL;
+//   *out = 0;
+
+// #  ifdef YORU_SIMD_AVX
+//   usize   i          = 0;
+//   usize   block_size = 4;
+//   __m256d acc
+
+//       for (; i + block_size <= n; i += block_size) {
+//     __m256d a = _mm256_loadu_pd(&v1[i]);
+//     __m256d b = _mm256_loadu_pd(&v2[i]);
+//     _mm256_storeu_pd(&temp_v[i], _mm256_mul_pd(a, b));
+//   }
+
+//   for (; i < n; ++i)
+//     temp_v[i] = v1[i] + v2[i];
+
+//   for (usize x = 0; i < x; ++x)
+//     *out += temp_v[i];
+// #  else
+//   for (usize i = 0; i < n; ++i)
+//     *out += v1[i] * v2[i];
+// #  endif
+//   return YORU_VEC_ERR_OK;
+// }
+
 Yoru_VecErr yoru_vec_dot(usize n, const f64 v1[static n], const f64 v2[static n], f64 *out) {
   if (n == 0 || !v1 || !v2 || !out) return YORU_VEC_ERR_NULL;
   *out = 0;
+#  ifdef YORU_SIMD_AVX
+  usize   i          = 0;
+  usize   block_size = 4;
+  __m256d sum_vec    = _mm256_setzero_pd();
+
+  for (; i + block_size <= n; i += block_size) {
+    __m256d a = _mm256_loadu_pd(&v1[i]);
+    __m256d b = _mm256_loadu_pd(&v2[i]);
+    sum_vec   = _mm256_add_pd(sum_vec, _mm256_mul_pd(a, b));
+  }
+
+  __m128d sum_high    = _mm256_extractf128_pd(sum_vec, 1);
+  __m128d sum_low     = _mm256_castpd256_pd128(sum_vec);
+  __m128d sum128      = _mm_add_pd(sum_low, sum_high);
+  __m128d sum_shuffle = _mm_shuffle_pd(sum128, sum128, 1);
+  __m128d final_sum   = _mm_add_pd(sum128, sum_shuffle);
+  *out                = _mm_cvtsd_f64(final_sum);
+
+  for (; i < n; ++i)
+    *out += v1[i] * v2[i];
+#  else
   for (usize i = 0; i < n; ++i)
     *out += v1[i] * v2[i];
+#  endif
   return YORU_VEC_ERR_OK;
 }
 
