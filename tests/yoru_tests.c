@@ -1,3 +1,4 @@
+#define YORU_USE_SIMD
 #define YORU_IMPL
 #include "../yoru.h"
 #include "yoru_stringview.tests.h"
