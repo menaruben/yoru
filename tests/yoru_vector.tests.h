@@ -2,6 +2,7 @@
 #define __YORU_VEC_TESTS_H__
 
 #include <stddef.h>
+#include <stdio.h>
 
 #include "../yoru.h"
 #include "yoru_test_helpers.h"
@@ -229,6 +230,24 @@ bool yoru_vec_null_pointer_test() {
   err = yoru_vec3_add(&a, &a, nilptr);
   YORU_EXPECT_TRUE(err == YORU_VEC_ERR_NULL);
 
+  return true;
+
+err:
+  return false;
+}
+
+bool yoru_mat_transpose_test() {
+  usize           nrows          = 3;
+  usize           ncols          = 3;
+  Yoru_Mat3x3_F64 mat            = yoru_mat_make(nrows, ncols, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+  Yoru_Mat3x3_F64 mat_t_expected = yoru_mat_make(nrows, ncols, 1, 4, 7, 2, 5, 8, 3, 6, 9);
+  Yoru_Mat3x3_F64 mat_t_actual   = {0};
+  mat_t_actual.ncols             = ncols;
+  mat_t_actual.nrows             = nrows;
+
+  Yoru_MatErr err = yoru_mat_transpose(3, 3, mat.elements, mat_t_actual.elements);
+  YORU_EXPECT_TRUE(err = YORU_MAT_ERR_OK);
+  YORU_EXPECT_EQ_MEM(mat_t_expected.elements, mat_t_actual.elements, ncols * nrows);
   return true;
 
 err:
