@@ -20,6 +20,17 @@
 #  include <windows.h>
 #endif
 
+// for now only AVX support
+#ifdef YORU_USE_SIMD
+#  if defined(__AVX__)
+#    define YORU_SIMD_AVX
+#    include <immintrin.h>
+#  else
+#    error "no SIMD abstraction supported"
+#  endif // __AVX__
+#else
+#endif // YORU_USE_SIMD
+
 /* ============================================================
    MODULE: Types
    provides common typedefs for fixed size types
@@ -1525,16 +1536,6 @@ Yoru_VecErr yoru_vec3_min_between(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *
 Yoru_VecErr yoru_vec4_min_between(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v);
 
 Yoru_VecErr yoru_vec3_cross(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
-
-// for now only AVX and SSE support
-#ifdef YORU_USE_SIMD
-#  if defined(__AVX__)
-#    define YORU_SIMD_AVX
-#    include <immintrin.h>
-#  endif // __AVX__
-#else
-#  error "no SIMD abstraction supported"
-#endif // YORU_USE_SIMD
 
 #ifdef YORU_IMPL
 Yoru_VecErr yoru_vec_add(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
