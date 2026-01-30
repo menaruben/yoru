@@ -1928,6 +1928,7 @@ typedef enum {
   YORU_MAT_ERR_OK                      = (1 << 0),
   YORU_MAT_ERR_NULL                    = (1 << 1),
   YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS = (1 << 2),
+  YORY_MAT_ERR_OUT_OF_BOUNDS           = (1 << 3),
 } Yoru_MatErr;
 
 Yoru_MatErr yoru_mat_add(
