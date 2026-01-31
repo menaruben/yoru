@@ -52,6 +52,9 @@ int main(void) {
       {"vec3_cross", yoru_vec3_cross_test},
       {"vec_null_pointer", yoru_vec_null_pointer_test},
       {"mat_transpose", yoru_mat_transpose_test},
+      {"mat_mul_quad", yoru_mat_mul_test_quadratic_mat},
+      {"mat_mul", yoru_mat_mul_test},
+      {"mat_identity", yoru_mat_identity_test},
   };
 
   usize test_count = sizeof(tests) / sizeof(tests[0]);

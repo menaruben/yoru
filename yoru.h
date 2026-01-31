@@ -56,10 +56,23 @@
 #define PTR_SIZE sizeof(void *)
 
 #define YORU_ARRAY_LEN(__arr) (sizeof(__arr) / sizeof(__arr[0]))
+
+#define YORU_PRINT_ARRAY(__arr, __length, __fmt)                                                                       \
+  do {                                                                                                                 \
+    printf("[");                                                                                                       \
+    for (usize i = 0; i < (__length); ++i)                                                                             \
+      printf(" " __fmt " ", (__arr)[i]);                                                                               \
+    printf("]\n");                                                                                                     \
+  } while (0)
+
 #define YORU_TODO(__msg) assert(false && "TODO: "__msg)
+
 #define YORU_UNREACHABLE() assert(false && "unreachable")
+
 #define YORU_NAMEOF(__x) (#__x)
+
 #define YORU_MAX(_a, _b) ((_a) < (_b) ? (_b) : (_a))
+
 #define YORU_MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 
 typedef int8_t        i8;
@@ -80,6 +93,9 @@ typedef unsigned char byte;
 typedef size_t        usize;
 typedef void         *anyptr;
 typedef char         *cstr;
+
+// and for those with divine intellect ^^
+typedef void u0;
 
 /* ============================================================
    MODULE: Optionals
@@ -1897,8 +1913,8 @@ Yoru_VecErr yoru_vec3_cross(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yo
 /* ============================================================
    MODULE: Matrices
    TODO:
-           - add SIMD optimizations
-           - add operations
+     - inv
+     - determinant
    ============================================================ */
 
 /* column-major matrix
@@ -1922,13 +1938,15 @@ typedef Yoru_Mat_T(f64, 3, 3) Yoru_Mat3x3_F64;
 typedef Yoru_Mat_T(f64, 4, 4) Yoru_Mat4x4_F64;
 
 // note: column-major
-#define yoru_mat_make(__R, __C, ...) {.elements = {__VA_ARGS__}, .nrows = __R, .ncols = __C}
+#define yoru_mat_make(__R, __C, ...)                                                                                   \
+  { .elements = {__VA_ARGS__}, .nrows = __R, .ncols = __C }
 
 typedef enum {
   YORU_MAT_ERR_OK                      = (1 << 0),
   YORU_MAT_ERR_NULL                    = (1 << 1),
   YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS = (1 << 2),
-  YORY_MAT_ERR_OUT_OF_BOUNDS           = (1 << 3),
+  YORU_MAT_ERR_OUT_OF_BOUNDS           = (1 << 3),
+  YORU_MAT_ERR_OUT_OF_MEM              = (1 << 4),
 } Yoru_MatErr;
 
 Yoru_MatErr yoru_mat_add(
@@ -1961,6 +1979,16 @@ Yoru_MatErr
 yoru_mat_transpose(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static ncols * nrows]);
 
 Yoru_MatErr yoru_mat_inv(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static nrows * ncols]);
+
+Yoru_MatErr
+yoru_mat_get_column(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize col, f64 out_col[static nrows]);
+
+Yoru_MatErr
+yoru_mat_get_row(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize row, f64 out_row[static ncols]);
+
+Yoru_MatErr yoru_mat_set(usize nrows, usize ncols, usize row, usize col, f64 mat[static nrows * ncols], f64 v);
+
+Yoru_MatErr yoru_mat_identity(usize n, f64 out_mat[static n * n]);
 
 #ifdef YORU_IMPL
 Yoru_MatErr yoru_mat_add(
@@ -2010,6 +2038,29 @@ Yoru_MatErr yoru_mat_sub(
   return YORU_MAT_ERR_OK;
 }
 
+Yoru_MatErr
+yoru_mat_get_column(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize col, f64 out_col[static nrows]) {
+  if (col >= ncols) return YORU_MAT_ERR_OUT_OF_BOUNDS;
+  usize col_start_idx = nrows * col;
+  for (usize i = 0; i < nrows; ++i)
+    out_col[i] = mat[col_start_idx + i];
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr
+yoru_mat_get_row(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize row, f64 out_row[static ncols]) {
+  if (row >= nrows) return YORU_MAT_ERR_OUT_OF_BOUNDS;
+  for (usize i = 0; i < ncols; ++i)
+    out_row[i] = mat[row + i * nrows];
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr yoru_mat_set(usize nrows, usize ncols, usize row, usize col, f64 mat[static nrows * ncols], f64 v) {
+  if (row >= nrows || col >= ncols) return YORU_MAT_ERR_OUT_OF_BOUNDS;
+  mat[col * nrows + row] = v;
+  return YORU_MAT_ERR_OK;
+}
+
 Yoru_MatErr yoru_mat_mul(
     usize nrows1,
     usize ncols1,
@@ -2018,8 +2069,46 @@ Yoru_MatErr yoru_mat_mul(
     usize ncols2,
     f64   mat2[static nrows2 * ncols2],
     f64   out_mat[static nrows1 * ncols2]) {
-  if (ncols1 != nrows2) { return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS; }
-  YORU_TODO("yoru_mat_mul");
+  if (!mat1 || !mat2) return YORU_MAT_ERR_NULL;
+  if (ncols1 != nrows2) return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+  Yoru_MatErr merr = YORU_MAT_ERR_OK;
+
+  // TODO: remove temp allocations, can be A LOT of memory even if only allocated once
+  f64 *row_a = malloc(ncols1 * sizeof(f64));
+  f64 *col_b = malloc(nrows2 * sizeof(f64));
+  if (!row_a || !col_b) return YORU_MAT_ERR_OUT_OF_MEM;
+
+  for (usize row_a_idx = 0; row_a_idx < nrows1; ++row_a_idx) {
+    yoru_mat_get_row(nrows1, ncols1, mat1, row_a_idx, row_a);
+
+    for (usize col_b_idx = 0; col_b_idx < ncols2; ++col_b_idx) {
+      f64 dot_res = 0;
+
+      merr = yoru_mat_get_column(nrows2, ncols2, mat2, col_b_idx, col_b);
+      if (merr != YORU_MAT_ERR_OK) return merr;
+
+      Yoru_VecErr verr = yoru_vec_dot(nrows2, row_a, col_b, &dot_res);
+      switch (verr) {
+        case YORU_VEC_ERR_OK:
+          break;
+        case YORU_VEC_ERR_NULL:
+          free(col_b);
+          return YORU_MAT_ERR_NULL;
+        case YORU_VEC_ERR_MISMATCHED_DIMENSIONS:
+          free(col_b);
+          return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+        default:
+          YORU_UNREACHABLE();
+          break;
+      }
+
+      merr = yoru_mat_set(nrows1, ncols2, row_a_idx, col_b_idx, out_mat, dot_res);
+      if (merr != YORU_MAT_ERR_OK) return merr;
+    }
+  }
+
+  free(row_a);
+  free(col_b);
   return YORU_MAT_ERR_OK;
 }
 
@@ -2040,7 +2129,7 @@ yoru_mat_transpose(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 
 
 Yoru_MatErr
 yoru_mat_scale(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 scalar, f64 out_mat[static nrows * ncols]) {
-  Yoru_VecErr verr = yoru_vec_mul_scalar(nrows * ncols, mat, scalar, out_mat);
+  Yoru_VecErr verr = yoru_vec_scale(nrows * ncols, mat, scalar, out_mat);
   switch (verr) {
     case YORU_VEC_ERR_OK:
       return YORU_MAT_ERR_OK;
@@ -2057,15 +2146,13 @@ yoru_mat_scale(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 scal
 }
 
 Yoru_MatErr yoru_mat_inv(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static nrows * ncols]) {
-  if (nrows * ncols == 1) { out_mat[0] = mat[0]; }
+  if (nrows * ncols == 1) {
+    out_mat[0] = mat[0];
+    return YORU_MAT_ERR_OK;
+  }
 
-  /*
-  A = a b
-      c d
+  if (nrows != ncols) return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
 
-      A_inv = (1/(ad - bc)) * [ d  -b
-                                -c  a ]
-  */
   if (nrows == 2 && ncols == 2) {
     f64 a            = mat[0];
     f64 b            = mat[2];
@@ -2092,7 +2179,27 @@ Yoru_MatErr yoru_mat_inv(usize nrows, usize ncols, f64 mat[static nrows * ncols]
     return YORU_MAT_ERR_OK;
   }
 
+  // if it is greater than the 2x2 matrix then we just do the normal gauss jordan
   YORU_TODO("yoru_mat_inv: inverse for dimensions other than 2x2");
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr yoru_mat_identity(usize n, f64 out_mat[static n * n]) {
+  if (!out_mat) return YORU_MAT_ERR_NULL;
+  usize       ncells = n * n;
+  Yoru_MatErr merr   = YORU_MAT_ERR_OK;
+
+  usize diag_idx = 0;
+  for (usize col_idx = 0; col_idx < n; ++col_idx) {
+    for (usize row_idx = 0; row_idx < n; ++row_idx) {
+      merr = yoru_mat_set(n, n, row_idx, col_idx, out_mat, 0);
+      if (merr != YORU_MAT_ERR_OK) return merr;
+    }
+
+    merr = yoru_mat_set(n, n, diag_idx, col_idx, out_mat, 1);
+    ++diag_idx;
+  }
+
   return YORU_MAT_ERR_OK;
 }
 

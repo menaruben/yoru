@@ -254,4 +254,56 @@ err:
   return false;
 }
 
+bool yoru_mat_mul_test_quadratic_mat() {
+  usize           nrows            = 3;
+  usize           ncols            = 3;
+  Yoru_Mat3x3_F64 mat1             = yoru_mat_make(nrows, ncols, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+  Yoru_Mat3x3_F64 mat2             = yoru_mat_make(nrows, ncols, 1, 4, 7, 2, 5, 8, 3, 6, 9);
+  Yoru_Mat3x3_F64 mat_res_expected = yoru_mat_make(nrows, ncols, 66, 78, 90, 78, 93, 108, 90, 108, 126);
+  Yoru_Mat3x3_F64 mat_res_actual   = {0};
+  mat_res_actual.ncols             = ncols;
+  mat_res_actual.nrows             = nrows;
+
+  Yoru_MatErr merr = yoru_mat_mul(nrows, nrows, mat1.elements, nrows, ncols, mat2.elements, mat_res_actual.elements);
+  YORU_EXPECT_TRUE(merr = YORU_MAT_ERR_OK);
+  YORU_EXPECT_EQ_MEM(mat_res_expected.elements, mat_res_actual.elements, nrows * ncols);
+  return true;
+err:
+  return false;
+}
+
+bool yoru_mat_mul_test() {
+  usize nrows1             = 2;
+  usize ncols1             = 4;
+  usize nrows2             = 4;
+  usize ncols2             = 3;
+  f64   mat1[]             = {1, 2, 3, 4, 5, 6, 7, 8};
+  f64   mat2[]             = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+  f64   mat_res_expected[] = {50, 60, 114, 140, 178, 220};
+  f64   mat_res_actual[6]  = {0};
+
+  Yoru_MatErr merr = yoru_mat_mul(nrows1, ncols1, mat1, nrows2, ncols2, mat2, mat_res_actual);
+  YORU_EXPECT_TRUE(merr == YORU_MAT_ERR_OK);
+  YORU_EXPECT_EQ_MEM(mat_res_expected, mat_res_actual, nrows1 * ncols2);
+  return true;
+err:
+  return false;
+}
+
+bool yoru_mat_identity_test() {
+  usize n                       = 3;
+  f64   identity_mat_exp[3 * 3] = {0};
+  identity_mat_exp[0]           = 1;
+  identity_mat_exp[4]           = 1;
+  identity_mat_exp[8]           = 1;
+
+  f64         identity_mat_act[3 * 3] = {0};
+  Yoru_MatErr merr                    = yoru_mat_identity(n, identity_mat_act);
+  YORU_EXPECT_TRUE(merr == YORU_MAT_ERR_OK);
+  YORU_EXPECT_EQ_MEM(identity_mat_exp, identity_mat_act, n * n);
+  return true;
+err:
+  return false;
+}
+
 #endif
