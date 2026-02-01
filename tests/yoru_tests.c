@@ -55,6 +55,7 @@ int main(void) {
       {"mat_mul_quad", yoru_mat_mul_test_quadratic_mat},
       {"mat_mul", yoru_mat_mul_test},
       {"mat_identity", yoru_mat_identity_test},
+      {"mat_inv", yoru_mat_inv_test},
   };
 
   usize test_count = sizeof(tests) / sizeof(tests[0]);

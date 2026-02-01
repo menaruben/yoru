@@ -306,4 +306,33 @@ err:
   return false;
 }
 
+bool yoru_mat_inv_test() {
+  f64 mat[3 * 3] = {
+      1, 0, 5,
+      2, 1, 6,
+      3, 4, 0,
+  };
+
+  f64 inv_exp[3 * 3] = {
+      -24,  20,  -5,
+       18, -15,   4,
+        5,  -4,   1,
+  };
+
+  f64 inv_act[3 * 3] = {0};
+  Yoru_Allocator allocator = yoru_global_allocator_make();
+  Yoru_MatErr merr = yoru_mat_inv(
+      &allocator,
+      3,
+      3,
+      mat,
+      inv_act);
+
+  YORU_EXPECT_TRUE(merr == YORU_MAT_ERR_OK);
+  YORU_EXPECT_EQ_MEM(inv_exp, inv_act, 3 * 3);
+  return true;
+err:
+  return false;
+}
+
 #endif

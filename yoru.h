@@ -1947,6 +1947,7 @@ typedef enum {
   YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS = (1 << 2),
   YORU_MAT_ERR_OUT_OF_BOUNDS           = (1 << 3),
   YORU_MAT_ERR_OUT_OF_MEM              = (1 << 4),
+  YORU_MAT_ERR_SINGULAR                = (1 << 5),
 } Yoru_MatErr;
 
 Yoru_MatErr yoru_mat_add(
@@ -1978,7 +1979,12 @@ yoru_mat_scale(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 scal
 Yoru_MatErr
 yoru_mat_transpose(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static ncols * nrows]);
 
-Yoru_MatErr yoru_mat_inv(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static nrows * ncols]);
+Yoru_MatErr yoru_mat_inv(
+    Yoru_Allocator *allocator,
+    usize           nrows,
+    usize           ncols,
+    f64             mat[static nrows * ncols],
+    f64             out_mat[static nrows * ncols]);
 
 Yoru_MatErr
 yoru_mat_get_column(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize col, f64 out_col[static nrows]);
@@ -1989,6 +1995,8 @@ yoru_mat_get_row(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize 
 Yoru_MatErr yoru_mat_set(usize nrows, usize ncols, usize row, usize col, f64 mat[static nrows * ncols], f64 v);
 
 Yoru_MatErr yoru_mat_identity(usize n, f64 out_mat[static n * n]);
+
+#define YORU_MAT_AT(mat, nrows, row, col) ((mat)[(col) * (nrows) + (row)])
 
 #ifdef YORU_IMPL
 Yoru_MatErr yoru_mat_add(
@@ -2145,42 +2153,96 @@ yoru_mat_scale(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 scal
   return YORU_MAT_ERR_OK;
 }
 
-Yoru_MatErr yoru_mat_inv(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static nrows * ncols]) {
-  if (nrows * ncols == 1) {
-    out_mat[0] = mat[0];
-    return YORU_MAT_ERR_OK;
-  }
+#  define MAT_AT(mat, nrows, row, col) ((mat)[(col) * (nrows) + (row)])
+
+Yoru_MatErr yoru_mat_inv(
+    Yoru_Allocator *allocator,
+    usize           nrows,
+    usize           ncols,
+    f64             mat[static nrows * ncols],
+    f64             out_mat[static nrows * ncols]) {
+  assert(allocator);
+  assert(mat);
+  assert(out_mat);
 
   if (nrows != ncols) return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+  if (nrows == 0) return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
 
-  if (nrows == 2 && ncols == 2) {
-    f64 a            = mat[0];
-    f64 b            = mat[2];
-    f64 c            = mat[1];
-    f64 d            = mat[3];
-    f64 scalar       = 1 / (a * d - b * c);
-    out_mat[0]       = d;
-    out_mat[1]       = -c;
-    out_mat[2]       = -b;
-    out_mat[3]       = a;
-    Yoru_VecErr verr = yoru_mat_scale(nrows, ncols, out_mat, scalar, out_mat);
-    switch (verr) {
-      case YORU_VEC_ERR_OK:
-        return YORU_MAT_ERR_OK;
-      case YORU_VEC_ERR_NULL:
-        return YORU_MAT_ERR_NULL;
-      case YORU_VEC_ERR_MISMATCHED_DIMENSIONS:
-        return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
-      default:
-        YORU_UNREACHABLE();
-        break;
-    }
+  const usize n = nrows;
 
+  /* Special cases */
+  if (n == 1) {
+    if (mat[0] == 0.0) return YORU_MAT_ERR_SINGULAR;
+    out_mat[0] = 1.0 / mat[0];
     return YORU_MAT_ERR_OK;
   }
 
-  // if it is greater than the 2x2 matrix then we just do the normal gauss jordan
-  YORU_TODO("yoru_mat_inv: inverse for dimensions other than 2x2");
+  Yoru_Opt maybe_a = yoru_allocator_alloc(allocator, sizeof(f64) * n * n);
+  if (!maybe_a.has_value) return YORU_MAT_ERR_OUT_OF_MEM;
+  f64 *a = maybe_a.ptr;
+
+  for (usize i = 0; i < n * n; ++i)
+    a[i] = mat[i];
+
+  // start with identity in out_mat
+  Yoru_MatErr merr = yoru_mat_identity(n, out_mat);
+  if (merr != YORU_MAT_ERR_OK) {
+    yoru_allocator_dealloc(allocator, a);
+    return merr;
+  }
+
+  // Gauss–Jordan elimination in general case..
+  for (usize pivot = 0; pivot < n; ++pivot) {
+    usize pivot_row = pivot;
+    f64   pivot_val = MAT_AT(a, n, pivot_row, pivot);
+
+    for (usize r = pivot + 1; r < n && pivot_val == 0.0; ++r) {
+      if (YORU_MAT_AT(a, n, r, pivot) != 0.0) {
+        pivot_row = r;
+        pivot_val = YORU_MAT_AT(a, n, r, pivot);
+        break;
+      }
+    }
+
+    if (pivot_val == 0.0) {
+      yoru_allocator_dealloc(allocator, a);
+      return YORU_MAT_ERR_SINGULAR;
+    }
+
+    if (pivot_row != pivot) {
+      for (usize col = 0; col < n; ++col) {
+        f64 tmp;
+
+        tmp                               = YORU_MAT_AT(a, n, pivot, col);
+        YORU_MAT_AT(a, n, pivot, col)     = YORU_MAT_AT(a, n, pivot_row, col);
+        YORU_MAT_AT(a, n, pivot_row, col) = tmp;
+
+        tmp                                     = YORU_MAT_AT(out_mat, n, pivot, col);
+        YORU_MAT_AT(out_mat, n, pivot, col)     = YORU_MAT_AT(out_mat, n, pivot_row, col);
+        YORU_MAT_AT(out_mat, n, pivot_row, col) = tmp;
+      }
+    }
+
+    f64 inv_pivot = 1.0 / YORU_MAT_AT(a, n, pivot, pivot);
+    for (usize col = 0; col < n; ++col) {
+      YORU_MAT_AT(a, n, pivot, col) *= inv_pivot;
+      YORU_MAT_AT(out_mat, n, pivot, col) *= inv_pivot;
+    }
+
+    for (usize row = 0; row < n; ++row) {
+      if (row == pivot) continue;
+
+      f64 factor = YORU_MAT_AT(a, n, row, pivot);
+      if (factor == 0.0) continue;
+
+      for (usize col = 0; col < n; ++col) {
+        YORU_MAT_AT(a, n, row, col) -= factor * YORU_MAT_AT(a, n, pivot, col);
+        YORU_MAT_AT(out_mat, n, row, col) -= factor * YORU_MAT_AT(out_mat, n, pivot, col);
+      }
+    }
+  }
+
+  yoru_allocator_dealloc(allocator, a);
   return YORU_MAT_ERR_OK;
 }
 
