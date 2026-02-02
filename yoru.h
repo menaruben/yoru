@@ -762,7 +762,7 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
 #define yoru_arraylist_destroy(__arr_ptr)                                                                              \
   do {                                                                                                                 \
     assert((__arr_ptr));                                                                                               \
-    if (!(__arr_ptr)->items) {                                                                                         \
+    if ((__arr_ptr)->items) {                                                                                          \
       yoru_allocator_dealloc((__arr_ptr)->allocator, (__arr_ptr)->items);                                              \
       (__arr_ptr)->items = NULL;                                                                                       \
     }                                                                                                                  \
@@ -1414,8 +1414,7 @@ Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath
   if (!file) goto cleanup;
 
   fseek(file, 0, SEEK_END);
-  usize end_pos   = ftell(file);
-  usize file_size = end_pos - offset_bytes;
+  usize file_size = ftell(file);
   if (offset_bytes >= file_size) goto cleanup;
 
   // make sure that we do not try to read more than we can
@@ -1439,14 +1438,15 @@ bool yoru_file_write_exact(const char *filepath, const u8 *bytes, usize nbytes, 
   assert(bytes);
 
   usize       file_size = yoru_file_get_size(filepath);
-  const char *mode      = "w";
+  const char *mode      = "wb";
   if (offset >= file_size) {
     offset = file_size;
     mode   = "a";
   }
 
   FILE *file = fopen(filepath, mode);
-  if (!file) return false;
+  A if (!file) return false;
+  fseek(file, offset, SEEK_SET);
 
   usize written = fwrite((anyptr)bytes, sizeof(u8), nbytes, file);
   fclose(file);
@@ -1992,11 +1992,10 @@ yoru_mat_get_column(usize nrows, usize ncols, f64 mat[static nrows * ncols], usi
 Yoru_MatErr
 yoru_mat_get_row(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize row, f64 out_row[static ncols]);
 
+#define YORU_MAT_AT(mat, nrows, row, col) ((mat)[(col) * (nrows) + (row)])
 Yoru_MatErr yoru_mat_set(usize nrows, usize ncols, usize row, usize col, f64 mat[static nrows * ncols], f64 v);
 
 Yoru_MatErr yoru_mat_identity(usize n, f64 out_mat[static n * n]);
-
-#define YORU_MAT_AT(mat, nrows, row, col) ((mat)[(col) * (nrows) + (row)])
 
 #ifdef YORU_IMPL
 Yoru_MatErr yoru_mat_add(
