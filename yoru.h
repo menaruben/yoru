@@ -20,6 +20,17 @@
 #  include <windows.h>
 #endif
 
+// for now only AVX support
+#ifdef YORU_USE_SIMD
+#  if defined(__AVX__)
+#    define YORU_SIMD_AVX
+#    include <immintrin.h>
+#  else
+#    error "no SIMD abstraction supported"
+#  endif // __AVX__
+#else
+#endif // YORU_USE_SIMD
+
 /* ============================================================
    MODULE: Types
    provides common typedefs for fixed size types
@@ -44,9 +55,25 @@
 #define USIZE_MAX SIZE_MAX
 #define PTR_SIZE sizeof(void *)
 
-#define YORU_ARRAY_LEN(__arr) (sizeof(arr) / sizeof(arr[0]))
-#define YORU_TODO(__msg) assert(false && __msg)
+#define YORU_ARRAY_LEN(__arr) (sizeof(__arr) / sizeof(__arr[0]))
+
+#define YORU_PRINT_ARRAY(__arr, __length, __fmt)                                                                       \
+  do {                                                                                                                 \
+    printf("[");                                                                                                       \
+    for (usize i = 0; i < (__length); ++i)                                                                             \
+      printf(" " __fmt " ", (__arr)[i]);                                                                               \
+    printf("]\n");                                                                                                     \
+  } while (0)
+
+#define YORU_TODO(__msg) assert(false && "TODO: "__msg)
+
+#define YORU_UNREACHABLE() assert(false && "unreachable")
+
 #define YORU_NAMEOF(__x) (#__x)
+
+#define YORU_MAX(_a, _b) ((_a) < (_b) ? (_b) : (_a))
+
+#define YORU_MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 
 typedef int8_t        i8;
 typedef uint8_t       u8;
@@ -66,6 +93,9 @@ typedef unsigned char byte;
 typedef size_t        usize;
 typedef void         *anyptr;
 typedef char         *cstr;
+
+// and for those with divine intellect ^^
+typedef void u0;
 
 /* ============================================================
    MODULE: Optionals
@@ -732,7 +762,7 @@ void __yoru_virtual_arena_allocator_destroy(anyptr ctx) {
 #define yoru_arraylist_destroy(__arr_ptr)                                                                              \
   do {                                                                                                                 \
     assert((__arr_ptr));                                                                                               \
-    if (!(__arr_ptr)->items) {                                                                                         \
+    if ((__arr_ptr)->items) {                                                                                          \
       yoru_allocator_dealloc((__arr_ptr)->allocator, (__arr_ptr)->items);                                              \
       (__arr_ptr)->items = NULL;                                                                                       \
     }                                                                                                                  \
@@ -1384,8 +1414,7 @@ Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath
   if (!file) goto cleanup;
 
   fseek(file, 0, SEEK_END);
-  usize end_pos   = ftell(file);
-  usize file_size = end_pos - offset_bytes;
+  usize file_size = ftell(file);
   if (offset_bytes >= file_size) goto cleanup;
 
   // make sure that we do not try to read more than we can
@@ -1394,7 +1423,7 @@ Yoru_String yoru_file_read_exact(Yoru_Allocator *allocator, const char *filepath
   if (!yoru_string_make(allocator, read_size, NULL, &res)) goto cleanup;
 
   fseek(file, offset_bytes, SEEK_SET);
-  fread((anyptr)res.data, sizeof(u8), res.length, file);
+  (void)fread((anyptr)res.data, sizeof(u8), res.length, file);
   fclose(file);
   return res;
 
@@ -1409,14 +1438,15 @@ bool yoru_file_write_exact(const char *filepath, const u8 *bytes, usize nbytes, 
   assert(bytes);
 
   usize       file_size = yoru_file_get_size(filepath);
-  const char *mode      = "w";
+  const char *mode      = "wb";
   if (offset >= file_size) {
     offset = file_size;
     mode   = "a";
   }
 
   FILE *file = fopen(filepath, mode);
-  if (!file) return false;
+  A if (!file) return false;
+  fseek(file, offset, SEEK_SET);
 
   usize written = fwrite((anyptr)bytes, sizeof(u8), nbytes, file);
   fclose(file);
@@ -1439,5 +1469,800 @@ usize yoru_file_get_size(const char *filepath) {
   fclose(file);
   return size;
 }
+#endif // YORU_IMPL
+
+/* ============================================================
+   MODULE: Vectors
+
+   NOTE: There are Vec2, Vec3, Vec4 for f64 predefined with their
+   functions. If you are using another typedef for the vectors
+   use the general `yoru_vec_<op>` functions.
+
+   Also make sure to run with optimization flags like
+   `-O3` or `-ffast-math` and so on. Otherwise some functions may
+   not get optimized with for example auto vectorization.
+ 
+   ============================================================ */
+
+#define Yoru_Vec_T(__T, __N)                                                                                           \
+  struct {                                                                                                             \
+    __T elements[__N];                                                                                                 \
+  }
+
+#define yoru_vec_make(...)                                                                                             \
+  {                                                                                                                    \
+    .elements = { __VA_ARGS__ }                                                                                        \
+  }
+
+typedef Yoru_Vec_T(f64, 2) Yoru_Vec2_F64;
+typedef Yoru_Vec_T(f64, 3) Yoru_Vec3_F64;
+typedef Yoru_Vec_T(f64, 4) Yoru_Vec4_F64;
+
+typedef enum {
+  YORU_VEC_ERR_OK                    = (1 << 0),
+  YORU_VEC_ERR_NULL                  = (1 << 1),
+  YORU_VEC_ERR_MISMATCHED_DIMENSIONS = (1 << 2),
+} Yoru_VecErr;
+
+#define __YORU_VEC_NOT_NULL(_v)                                                                                        \
+  if (!(_v)) return YORU_VEC_ERR_NULL;
+
+Yoru_VecErr yoru_vec_add(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]);
+Yoru_VecErr yoru_vec2_add(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v);
+Yoru_VecErr yoru_vec3_add(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
+Yoru_VecErr yoru_vec4_add(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v);
+
+Yoru_VecErr yoru_vec_sub(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]);
+Yoru_VecErr yoru_vec2_sub(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v);
+Yoru_VecErr yoru_vec3_sub(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
+Yoru_VecErr yoru_vec4_sub(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v);
+
+Yoru_VecErr yoru_vec_mul(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]);
+Yoru_VecErr yoru_vec2_mul(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v);
+Yoru_VecErr yoru_vec3_mul(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
+Yoru_VecErr yoru_vec4_mul(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v);
+
+Yoru_VecErr yoru_vec_div(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]);
+Yoru_VecErr yoru_vec2_div(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v);
+Yoru_VecErr yoru_vec3_div(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
+Yoru_VecErr yoru_vec4_div(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v);
+
+Yoru_VecErr yoru_vec_dot(usize n, const f64 v1[static n], const f64 v2[static n], f64 *out);
+Yoru_VecErr yoru_vec2_dot(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, f64 *out_v);
+Yoru_VecErr yoru_vec3_dot(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, f64 *out_v);
+Yoru_VecErr yoru_vec4_dot(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, f64 *out_v);
+
+Yoru_VecErr yoru_vec_scale(usize n, const f64 v[static n], f64 scalar, f64 out_v[static n]);
+Yoru_VecErr yoru_vec2_scale(const Yoru_Vec2_F64 *v, f64 scalar, Yoru_Vec2_F64 *out_v);
+Yoru_VecErr yoru_vec3_scale(const Yoru_Vec3_F64 *v, f64 scalar, Yoru_Vec3_F64 *out_v);
+Yoru_VecErr yoru_vec4_scale(const Yoru_Vec4_F64 *v, f64 scalar, Yoru_Vec4_F64 *out_v);
+
+Yoru_VecErr yoru_vec_length_squared(usize n, const f64 v[static n], f64 *out);
+Yoru_VecErr yoru_vec2_length_squared(const Yoru_Vec2_F64 *v, f64 *out_length);
+Yoru_VecErr yoru_vec3_length_squared(const Yoru_Vec3_F64 *v, f64 *out_length);
+Yoru_VecErr yoru_vec4_length_squared(const Yoru_Vec4_F64 *v, f64 *out_length);
+
+Yoru_VecErr yoru_vec_max_between(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]);
+Yoru_VecErr yoru_vec2_max_between(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v);
+Yoru_VecErr yoru_vec3_max_between(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
+Yoru_VecErr yoru_vec4_max_between(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v);
+
+Yoru_VecErr yoru_vec_min_between(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]);
+Yoru_VecErr yoru_vec2_min_between(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v);
+Yoru_VecErr yoru_vec3_min_between(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
+Yoru_VecErr yoru_vec4_min_between(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v);
+
+Yoru_VecErr yoru_vec3_cross(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v);
+
+#ifdef YORU_IMPL
+Yoru_VecErr yoru_vec_add(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
+  if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
+#  ifdef YORU_SIMD_AVX
+  usize i = 0;
+  if (n > 3) {
+    usize batch_size = 4;
+    for (; i + batch_size <= n; i += batch_size) {
+      __m256d a = _mm256_loadu_pd(&v1[i]);
+      __m256d b = _mm256_loadu_pd(&v2[i]);
+      _mm256_storeu_pd(&out_v[i], _mm256_add_pd(a, b));
+    }
+  }
+  for (; i < n; ++i)
+    out_v[i] = v1[i] + v2[i];
+#  else // fallback scalar
+  for (usize i = 0; i < n; ++i)
+    out_v[i] = v1[i] + v2[i];
+#  endif
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_add(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_add(2, (const f64 *)v1->elements, (const f64 *)v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_add(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_add(3, (const f64 *)v1->elements, (const f64 *)v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec4_add(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_add(4, (const f64 *)v1->elements, (const f64 *)v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec_sub(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
+  if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
+#  ifdef YORU_SIMD_AVX
+  usize i = 0;
+  if (n > 3) {
+    usize batch_size = 4;
+    for (; i + batch_size <= n; i += batch_size) {
+      __m256d a = _mm256_loadu_pd(&v1[i]);
+      __m256d b = _mm256_loadu_pd(&v2[i]);
+      _mm256_storeu_pd(&out_v[i], _mm256_sub_pd(a, b));
+    }
+  }
+
+  for (; i < n; ++i)
+    out_v[i] = v1[i] - v2[i];
+#  else // fallback scalar
+  for (usize i = 0; i < n; ++i)
+    out_v[i] = v1[i] - v2[i];
+#  endif
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_sub(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_sub(2, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_sub(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_sub(3, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec4_sub(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_sub(4, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec_mul(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
+  if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
+
+#  ifdef YORU_SIMD_AVX
+  usize i = 0;
+  if (n > 3) {
+    usize batch_size = 4;
+    for (; i + batch_size <= n; i += batch_size) {
+      __m256d a = _mm256_loadu_pd(&v1[i]);
+      __m256d b = _mm256_loadu_pd(&v2[i]);
+      _mm256_storeu_pd(&out_v[i], _mm256_mul_pd(a, b));
+    }
+  }
+
+  for (; i < n; ++i)
+    out_v[i] = v1[i] * v2[i];
+#  else // fallback scalar
+  for (usize i = 0; i < n; ++i)
+    out_v[i] = v1[i] * v2[i];
+#  endif
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_mul(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_mul(2, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_mul(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_mul(3, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec4_mul(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_mul(4, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec_div(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
+  if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
+
+#  ifdef YORU_SIMD_AVX
+  usize i = 0;
+  if (n > 3) {
+    usize batch_size = 4;
+    for (; i + batch_size <= n; i += batch_size) {
+      __m256d a = _mm256_loadu_pd(&v1[i]);
+      __m256d b = _mm256_loadu_pd(&v2[i]);
+      _mm256_storeu_pd(&out_v[i], _mm256_div_pd(a, b));
+    }
+  }
+
+  for (; i < n; ++i)
+    out_v[i] = v1[i] / v2[i];
+#  else // fallback scalar
+  for (usize i = 0; i < n; ++i)
+    out_v[i] = v1[i] / v2[i];
+#  endif
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_div(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_div(2, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_div(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_div(3, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec4_div(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_div(4, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec_dot(usize n, const f64 v1[static n], const f64 v2[static n], f64 *out) {
+  if (n == 0 || !v1 || !v2 || !out) return YORU_VEC_ERR_NULL;
+  *out = 0;
+#  ifdef YORU_SIMD_AVX
+  usize   i          = 0;
+  usize   block_size = 4;
+  __m256d sum_vec    = _mm256_setzero_pd();
+
+  for (; i + block_size <= n; i += block_size) {
+    __m256d a = _mm256_loadu_pd(&v1[i]);
+    __m256d b = _mm256_loadu_pd(&v2[i]);
+    sum_vec   = _mm256_add_pd(sum_vec, _mm256_mul_pd(a, b));
+  }
+
+  __m128d sum_high    = _mm256_extractf128_pd(sum_vec, 1);
+  __m128d sum_low     = _mm256_castpd256_pd128(sum_vec);
+  __m128d sum128      = _mm_add_pd(sum_low, sum_high);
+  __m128d sum_shuffle = _mm_shuffle_pd(sum128, sum128, 1);
+  __m128d final_sum   = _mm_add_pd(sum128, sum_shuffle);
+  *out                = _mm_cvtsd_f64(final_sum);
+
+  for (; i < n; ++i)
+    *out += v1[i] * v2[i];
+#  else
+  for (usize i = 0; i < n; ++i)
+    *out += v1[i] * v2[i];
+#  endif
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_dot(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, f64 *out) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out);
+  return yoru_vec_dot(2, v1->elements, v2->elements, out);
+}
+
+Yoru_VecErr yoru_vec3_dot(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, f64 *out) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out);
+  return yoru_vec_dot(3, v1->elements, v2->elements, out);
+}
+
+Yoru_VecErr yoru_vec4_dot(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, f64 *out) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out);
+  return yoru_vec_dot(4, v1->elements, v2->elements, out);
+}
+
+Yoru_VecErr yoru_vec_scale(usize n, const f64 v[static n], f64 scalar, f64 out_v[static n]) {
+  if (n == 0 || !v || !out_v) return YORU_VEC_ERR_NULL;
+
+#  ifdef YORU_SIMD_AVX
+  usize i = 0;
+  if (n > 3) {
+    usize   batch_size = 4;
+    __m256d scalar_vec = _mm256_set1_pd(scalar);
+    for (; i + batch_size <= n; i += batch_size) {
+      __m256d a = _mm256_loadu_pd(&v[i]);
+      _mm256_storeu_pd(&out_v[i], _mm256_mul_pd(a, scalar_vec));
+    }
+  }
+
+  // rest scalar
+  for (; i < n; ++i)
+    out_v[i] = v[i] * scalar;
+#  else // fallback scalar
+  for (usize i = 0; i < n; ++i)
+    out_v[i] = v[i] * scalar;
+#  endif
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_scale(const Yoru_Vec2_F64 *v, f64 scalar, Yoru_Vec2_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_scale(2, v->elements, scalar, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_scale(const Yoru_Vec3_F64 *v, f64 scalar, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_scale(3, v->elements, scalar, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec4_scale(const Yoru_Vec4_F64 *v, f64 scalar, Yoru_Vec4_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_scale(4, v->elements, scalar, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec_length_squared(usize n, const f64 v[static n], f64 *out) {
+  return yoru_vec_dot(n, v, v, out);
+}
+
+Yoru_VecErr yoru_vec2_length_squared(const Yoru_Vec2_F64 *v, f64 *out_length) {
+  __YORU_VEC_NOT_NULL(v);
+  __YORU_VEC_NOT_NULL(out_length);
+  return yoru_vec_length_squared(2, v->elements, out_length);
+}
+
+Yoru_VecErr yoru_vec3_length_squared(const Yoru_Vec3_F64 *v, f64 *out_length) {
+  __YORU_VEC_NOT_NULL(v);
+  __YORU_VEC_NOT_NULL(out_length);
+  return yoru_vec_length_squared(3, v->elements, out_length);
+}
+
+Yoru_VecErr yoru_vec4_length_squared(const Yoru_Vec4_F64 *v, f64 *out_length) {
+  __YORU_VEC_NOT_NULL(v);
+  __YORU_VEC_NOT_NULL(out_length);
+  return yoru_vec_length_squared(4, v->elements, out_length);
+}
+
+Yoru_VecErr yoru_vec_max_between(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
+  if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
+  for (usize i = 0; i < n; ++i)
+    out_v[i] = YORU_MAX(v1[i], v2[i]);
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_max_between(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_max_between(2, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_max_between(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_max_between(3, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec4_max_between(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_max_between(4, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec_min_between(usize n, const f64 v1[static n], const f64 v2[static n], f64 out_v[static n]) {
+  if (n == 0 || !v1 || !v2 || !out_v) return YORU_VEC_ERR_NULL;
+  for (usize i = 0; i < n; ++i)
+    out_v[i] = YORU_MIN(v1[i], v2[i]);
+  return YORU_VEC_ERR_OK;
+}
+
+Yoru_VecErr yoru_vec2_min_between(const Yoru_Vec2_F64 *v1, const Yoru_Vec2_F64 *v2, Yoru_Vec2_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_min_between(2, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_min_between(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_min_between(3, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec4_min_between(const Yoru_Vec4_F64 *v1, const Yoru_Vec4_F64 *v2, Yoru_Vec4_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  return yoru_vec_min_between(4, v1->elements, v2->elements, out_v->elements);
+}
+
+Yoru_VecErr yoru_vec3_cross(const Yoru_Vec3_F64 *v1, const Yoru_Vec3_F64 *v2, Yoru_Vec3_F64 *out_v) {
+  __YORU_VEC_NOT_NULL(v1);
+  __YORU_VEC_NOT_NULL(v2);
+  __YORU_VEC_NOT_NULL(out_v);
+  out_v->elements[0] = v1->elements[1] * v2->elements[2] - v1->elements[2] * v2->elements[1];
+  out_v->elements[1] = v1->elements[2] * v2->elements[0] - v1->elements[0] * v2->elements[2];
+  out_v->elements[2] = v1->elements[0] * v2->elements[1] - v1->elements[1] * v2->elements[0];
+  return YORU_VEC_ERR_OK;
+}
+#endif // YORU_IMPL
+
+/* ============================================================
+   MODULE: Matrices
+   TODO:
+     - inv
+     - determinant
+   ============================================================ */
+
+/* column-major matrix
+   Example:
+     - Logically:
+       1 2 3
+       4 5 6
+       7 8 9
+
+     - In Memory: 1 4 7 2 5 8 3 6 9
+*/
+#define Yoru_Mat_T(__T, __ROWS, __COLS)                                                                                \
+  struct {                                                                                                             \
+    __T   elements[__ROWS * __COLS];                                                                                   \
+    usize nrows;                                                                                                       \
+    usize ncols;                                                                                                       \
+  }
+
+typedef Yoru_Mat_T(f64, 2, 2) Yoru_Mat2x2_F64;
+typedef Yoru_Mat_T(f64, 3, 3) Yoru_Mat3x3_F64;
+typedef Yoru_Mat_T(f64, 4, 4) Yoru_Mat4x4_F64;
+
+// note: column-major
+#define yoru_mat_make(__R, __C, ...)                                                                                   \
+  { .elements = {__VA_ARGS__}, .nrows = __R, .ncols = __C }
+
+typedef enum {
+  YORU_MAT_ERR_OK                      = (1 << 0),
+  YORU_MAT_ERR_NULL                    = (1 << 1),
+  YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS = (1 << 2),
+  YORU_MAT_ERR_OUT_OF_BOUNDS           = (1 << 3),
+  YORU_MAT_ERR_OUT_OF_MEM              = (1 << 4),
+  YORU_MAT_ERR_SINGULAR                = (1 << 5),
+} Yoru_MatErr;
+
+Yoru_MatErr yoru_mat_add(
+    usize nrows,
+    usize ncols,
+    f64   mat1[static nrows * ncols],
+    f64   mat2[static nrows * ncols],
+    f64   out_mat[static nrows * ncols]);
+
+Yoru_MatErr yoru_mat_sub(
+    usize nrows,
+    usize ncols,
+    f64   mat1[static nrows * ncols],
+    f64   mat2[static nrows * ncols],
+    f64   out_mat[static nrows * ncols]);
+
+Yoru_MatErr yoru_mat_mul(
+    usize nrows1,
+    usize ncols1,
+    f64   mat1[static nrows1 * ncols1],
+    usize nrows2,
+    usize ncols2,
+    f64   mat2[static nrows2 * ncols2],
+    f64   out_mat[static nrows1 * ncols2]);
+
+Yoru_MatErr
+yoru_mat_scale(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 scalar, f64 out_mat[static nrows * ncols]);
+
+Yoru_MatErr
+yoru_mat_transpose(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static ncols * nrows]);
+
+Yoru_MatErr yoru_mat_inv(
+    Yoru_Allocator *allocator,
+    usize           nrows,
+    usize           ncols,
+    f64             mat[static nrows * ncols],
+    f64             out_mat[static nrows * ncols]);
+
+Yoru_MatErr
+yoru_mat_get_column(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize col, f64 out_col[static nrows]);
+
+Yoru_MatErr
+yoru_mat_get_row(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize row, f64 out_row[static ncols]);
+
+#define YORU_MAT_AT(mat, nrows, row, col) ((mat)[(col) * (nrows) + (row)])
+Yoru_MatErr yoru_mat_set(usize nrows, usize ncols, usize row, usize col, f64 mat[static nrows * ncols], f64 v);
+
+Yoru_MatErr yoru_mat_identity(usize n, f64 out_mat[static n * n]);
+
+#ifdef YORU_IMPL
+Yoru_MatErr yoru_mat_add(
+    usize nrows,
+    usize ncols,
+    f64   mat1[static nrows * ncols],
+    f64   mat2[static nrows * ncols],
+    f64   out_mat[static nrows * ncols]) {
+  usize       n    = nrows * ncols;
+  Yoru_VecErr verr = yoru_vec_add(n, mat1, mat2, out_mat);
+  switch (verr) {
+    case YORU_VEC_ERR_OK:
+      return YORU_MAT_ERR_OK;
+    case YORU_VEC_ERR_NULL:
+      return YORU_MAT_ERR_NULL;
+    case YORU_VEC_ERR_MISMATCHED_DIMENSIONS:
+      return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+
+    default:
+      YORU_UNREACHABLE();
+      break;
+  }
+
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr yoru_mat_sub(
+    usize nrows,
+    usize ncols,
+    f64   mat1[static nrows * ncols],
+    f64   mat2[static nrows * ncols],
+    f64   out_mat[static nrows * ncols]) {
+  usize       n    = nrows * ncols;
+  Yoru_VecErr verr = yoru_vec_sub(n, mat1, mat2, out_mat);
+  switch (verr) {
+    case YORU_VEC_ERR_OK:
+      return YORU_MAT_ERR_OK;
+    case YORU_VEC_ERR_NULL:
+      return YORU_MAT_ERR_NULL;
+    case YORU_VEC_ERR_MISMATCHED_DIMENSIONS:
+      return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+    default:
+      YORU_UNREACHABLE();
+      break;
+  }
+
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr
+yoru_mat_get_column(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize col, f64 out_col[static nrows]) {
+  if (col >= ncols) return YORU_MAT_ERR_OUT_OF_BOUNDS;
+  usize col_start_idx = nrows * col;
+  for (usize i = 0; i < nrows; ++i)
+    out_col[i] = mat[col_start_idx + i];
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr
+yoru_mat_get_row(usize nrows, usize ncols, f64 mat[static nrows * ncols], usize row, f64 out_row[static ncols]) {
+  if (row >= nrows) return YORU_MAT_ERR_OUT_OF_BOUNDS;
+  for (usize i = 0; i < ncols; ++i)
+    out_row[i] = mat[row + i * nrows];
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr yoru_mat_set(usize nrows, usize ncols, usize row, usize col, f64 mat[static nrows * ncols], f64 v) {
+  if (row >= nrows || col >= ncols) return YORU_MAT_ERR_OUT_OF_BOUNDS;
+  mat[col * nrows + row] = v;
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr yoru_mat_mul(
+    usize nrows1,
+    usize ncols1,
+    f64   mat1[static nrows1 * ncols1],
+    usize nrows2,
+    usize ncols2,
+    f64   mat2[static nrows2 * ncols2],
+    f64   out_mat[static nrows1 * ncols2]) {
+  if (!mat1 || !mat2) return YORU_MAT_ERR_NULL;
+  if (ncols1 != nrows2) return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+  Yoru_MatErr merr = YORU_MAT_ERR_OK;
+
+  // TODO: remove temp allocations, can be A LOT of memory even if only allocated once
+  f64 *row_a = malloc(ncols1 * sizeof(f64));
+  f64 *col_b = malloc(nrows2 * sizeof(f64));
+  if (!row_a || !col_b) return YORU_MAT_ERR_OUT_OF_MEM;
+
+  for (usize row_a_idx = 0; row_a_idx < nrows1; ++row_a_idx) {
+    yoru_mat_get_row(nrows1, ncols1, mat1, row_a_idx, row_a);
+
+    for (usize col_b_idx = 0; col_b_idx < ncols2; ++col_b_idx) {
+      f64 dot_res = 0;
+
+      merr = yoru_mat_get_column(nrows2, ncols2, mat2, col_b_idx, col_b);
+      if (merr != YORU_MAT_ERR_OK) return merr;
+
+      Yoru_VecErr verr = yoru_vec_dot(nrows2, row_a, col_b, &dot_res);
+      switch (verr) {
+        case YORU_VEC_ERR_OK:
+          break;
+        case YORU_VEC_ERR_NULL:
+          free(col_b);
+          return YORU_MAT_ERR_NULL;
+        case YORU_VEC_ERR_MISMATCHED_DIMENSIONS:
+          free(col_b);
+          return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+        default:
+          YORU_UNREACHABLE();
+          break;
+      }
+
+      merr = yoru_mat_set(nrows1, ncols2, row_a_idx, col_b_idx, out_mat, dot_res);
+      if (merr != YORU_MAT_ERR_OK) return merr;
+    }
+  }
+
+  free(row_a);
+  free(col_b);
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr
+yoru_mat_transpose(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 out_mat[static ncols * nrows]) {
+  usize n              = nrows * ncols;
+  usize old_group_size = nrows;
+  usize new_group_size = ncols;
+
+  for (usize i = 0; i < old_group_size; ++i) {
+    for (usize j = 0; j < new_group_size; ++j) {
+      out_mat[i * new_group_size + j] = mat[j * old_group_size + i];
+    }
+  }
+
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr
+yoru_mat_scale(usize nrows, usize ncols, f64 mat[static nrows * ncols], f64 scalar, f64 out_mat[static nrows * ncols]) {
+  Yoru_VecErr verr = yoru_vec_scale(nrows * ncols, mat, scalar, out_mat);
+  switch (verr) {
+    case YORU_VEC_ERR_OK:
+      return YORU_MAT_ERR_OK;
+    case YORU_VEC_ERR_NULL:
+      return YORU_MAT_ERR_NULL;
+    case YORU_VEC_ERR_MISMATCHED_DIMENSIONS:
+      return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+    default:
+      YORU_UNREACHABLE();
+      break;
+  }
+
+  return YORU_MAT_ERR_OK;
+}
+
+#  define MAT_AT(mat, nrows, row, col) ((mat)[(col) * (nrows) + (row)])
+
+Yoru_MatErr yoru_mat_inv(
+    Yoru_Allocator *allocator,
+    usize           nrows,
+    usize           ncols,
+    f64             mat[static nrows * ncols],
+    f64             out_mat[static nrows * ncols]) {
+  assert(allocator);
+  assert(mat);
+  assert(out_mat);
+
+  if (nrows != ncols) return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+  if (nrows == 0) return YORU_MAT_ERR_INCOMPATIBLE_DIMENSIONS;
+
+  const usize n = nrows;
+
+  /* Special cases */
+  if (n == 1) {
+    if (mat[0] == 0.0) return YORU_MAT_ERR_SINGULAR;
+    out_mat[0] = 1.0 / mat[0];
+    return YORU_MAT_ERR_OK;
+  }
+
+  Yoru_Opt maybe_a = yoru_allocator_alloc(allocator, sizeof(f64) * n * n);
+  if (!maybe_a.has_value) return YORU_MAT_ERR_OUT_OF_MEM;
+  f64 *a = maybe_a.ptr;
+
+  for (usize i = 0; i < n * n; ++i)
+    a[i] = mat[i];
+
+  // start with identity in out_mat
+  Yoru_MatErr merr = yoru_mat_identity(n, out_mat);
+  if (merr != YORU_MAT_ERR_OK) {
+    yoru_allocator_dealloc(allocator, a);
+    return merr;
+  }
+
+  // Gauss–Jordan elimination in general case..
+  for (usize pivot = 0; pivot < n; ++pivot) {
+    usize pivot_row = pivot;
+    f64   pivot_val = MAT_AT(a, n, pivot_row, pivot);
+
+    for (usize r = pivot + 1; r < n && pivot_val == 0.0; ++r) {
+      if (YORU_MAT_AT(a, n, r, pivot) != 0.0) {
+        pivot_row = r;
+        pivot_val = YORU_MAT_AT(a, n, r, pivot);
+        break;
+      }
+    }
+
+    if (pivot_val == 0.0) {
+      yoru_allocator_dealloc(allocator, a);
+      return YORU_MAT_ERR_SINGULAR;
+    }
+
+    if (pivot_row != pivot) {
+      for (usize col = 0; col < n; ++col) {
+        f64 tmp;
+
+        tmp                               = YORU_MAT_AT(a, n, pivot, col);
+        YORU_MAT_AT(a, n, pivot, col)     = YORU_MAT_AT(a, n, pivot_row, col);
+        YORU_MAT_AT(a, n, pivot_row, col) = tmp;
+
+        tmp                                     = YORU_MAT_AT(out_mat, n, pivot, col);
+        YORU_MAT_AT(out_mat, n, pivot, col)     = YORU_MAT_AT(out_mat, n, pivot_row, col);
+        YORU_MAT_AT(out_mat, n, pivot_row, col) = tmp;
+      }
+    }
+
+    f64 inv_pivot = 1.0 / YORU_MAT_AT(a, n, pivot, pivot);
+    for (usize col = 0; col < n; ++col) {
+      YORU_MAT_AT(a, n, pivot, col) *= inv_pivot;
+      YORU_MAT_AT(out_mat, n, pivot, col) *= inv_pivot;
+    }
+
+    for (usize row = 0; row < n; ++row) {
+      if (row == pivot) continue;
+
+      f64 factor = YORU_MAT_AT(a, n, row, pivot);
+      if (factor == 0.0) continue;
+
+      for (usize col = 0; col < n; ++col) {
+        YORU_MAT_AT(a, n, row, col) -= factor * YORU_MAT_AT(a, n, pivot, col);
+        YORU_MAT_AT(out_mat, n, row, col) -= factor * YORU_MAT_AT(out_mat, n, pivot, col);
+      }
+    }
+  }
+
+  yoru_allocator_dealloc(allocator, a);
+  return YORU_MAT_ERR_OK;
+}
+
+Yoru_MatErr yoru_mat_identity(usize n, f64 out_mat[static n * n]) {
+  if (!out_mat) return YORU_MAT_ERR_NULL;
+  usize       ncells = n * n;
+  Yoru_MatErr merr   = YORU_MAT_ERR_OK;
+
+  usize diag_idx = 0;
+  for (usize col_idx = 0; col_idx < n; ++col_idx) {
+    for (usize row_idx = 0; row_idx < n; ++row_idx) {
+      merr = yoru_mat_set(n, n, row_idx, col_idx, out_mat, 0);
+      if (merr != YORU_MAT_ERR_OK) return merr;
+    }
+
+    merr = yoru_mat_set(n, n, diag_idx, col_idx, out_mat, 1);
+    ++diag_idx;
+  }
+
+  return YORU_MAT_ERR_OK;
+}
+
 #endif // YORU_IMPL
 #endif // __YORU_H__

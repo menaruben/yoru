@@ -1,6 +1,8 @@
+#define YORU_USE_SIMD
 #define YORU_IMPL
 #include "../yoru.h"
 #include "yoru_stringview.tests.h"
+#include "yoru_vector.tests.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -37,6 +39,23 @@ int main(void) {
       {"stringview_trim", yoru_stringview_trim_test},
       {"stringview_trim_while", yoru_stringview_trim_while_test},
       {"stringview_split_by_char", yoru_stringview_split_by_char_test},
+      {"vec_add", yoru_vec_add_test},
+      {"vec_sub", yoru_vec_sub_test},
+      {"vec_mul", yoru_vec_mul_test},
+      {"vec_div", yoru_vec_div_test},
+      {"vec_dot", yoru_vec_dot_test},
+      {"vec_scale", yoru_vec_scale_test},
+      {"vec_negate", yoru_vec_negate_test},
+      {"vec_length_squared", yoru_vec_length_squared_test},
+      {"vec_min", yoru_vec_min_test},
+      {"vec_max", yoru_vec_max_test},
+      {"vec3_cross", yoru_vec3_cross_test},
+      {"vec_null_pointer", yoru_vec_null_pointer_test},
+      {"mat_transpose", yoru_mat_transpose_test},
+      {"mat_mul_quad", yoru_mat_mul_test_quadratic_mat},
+      {"mat_mul", yoru_mat_mul_test},
+      {"mat_identity", yoru_mat_identity_test},
+      {"mat_inv", yoru_mat_inv_test},
   };
 
   usize test_count = sizeof(tests) / sizeof(tests[0]);
